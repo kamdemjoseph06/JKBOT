@@ -13,6 +13,27 @@ from telegram.ext import (
     ContextTypes, JobQueue
 )
 from groq import Groq
+import requests
+from bs4 import BeautifulSoup
+
+
+def recherche_fiscal(question):
+    try:
+        url = "https://codegeneraldesimpots.com/cm/"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
+        
+        # Extraire le texte principal
+        texte = ""
+        for p in soup.find_all(["p", "h2", "h3", "li"]):
+            texte += p.get_text() + "\n"
+        
+        # Limiter le texte
+        texte = texte[:3000]
+        return texte
+    except Exception as e:
+        return f"Impossible de récupérer les données fiscales : {e}"
 
 TOKEN_TELEGRAM = os.environ.get("TOKEN_TELEGRA")
 CLE_GROQ = os.environ.get("CLE_GRO")
