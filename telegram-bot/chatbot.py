@@ -10,8 +10,6 @@ from telegram.ext import (
     ContextTypes
 )
 from groq import Groq
-import requests
-from bs4 import BeautifulSoup
 
 # ─────────────────────────────────────────────
 # CONFIGURATION
