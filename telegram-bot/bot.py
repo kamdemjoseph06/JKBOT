@@ -2,6 +2,7 @@ import logging
 import json
 import os
 import sys
+import random
 from telegram import Update
 from telegram.ext import (
     Application, CommandHandler,
@@ -626,6 +627,305 @@ def traiter_calcul(texte: str) -> str | None:
     return None
 
 # ─────────────────────────────────────────────
+# BANQUE DE QUESTIONS QUIZ
+# ─────────────────────────────────────────────
+BANQUE_QUESTIONS = [
+    # ── FISCALITÉ ──
+    {
+        "categorie": "🧾 Fiscalité",
+        "niveau": "⭐ Débutant",
+        "question": "Quel est le taux normal de TVA au Cameroun ?",
+        "choix": ["A) 17,5%", "B) 19,25%", "C) 20%", "D) 15%"],
+        "reponse": "B",
+        "explication": "Le taux normal de TVA est 19,25% = 17,5% + 10% de Centimes Additionnels Communaux (CAC). (Art. 125 CGI)"
+    },
+    {
+        "categorie": "🧾 Fiscalité",
+        "niveau": "⭐ Débutant",
+        "question": "Quel est le taux de l'Impôt sur les Sociétés (IS) hors CAC au Cameroun ?",
+        "choix": ["A) 25%", "B) 28%", "C) 30%", "D) 33%"],
+        "reponse": "C",
+        "explication": "Le taux IS est 30% (Art. 27 CGI). Avec les CAC de 10%, le taux effectif global est 33%. La réponse D (33%) représente le taux tout compris, mais le taux légal IS seul est 30%."
+    },
+    {
+        "categorie": "🧾 Fiscalité",
+        "niveau": "⭐ Débutant",
+        "question": "À partir de quel chiffre d'affaires une entreprise est-elle assujettie à la TVA au Cameroun ?",
+        "choix": ["A) 10 000 000 FCFA", "B) 30 000 000 FCFA", "C) 50 000 000 FCFA", "D) 100 000 000 FCFA"],
+        "reponse": "C",
+        "explication": "Le seuil d'assujettissement à la TVA est de 50 000 000 FCFA de CAHT (Art. 124 CGI). En dessous, l'entreprise relève du régime de l'impôt libératoire."
+    },
+    {
+        "categorie": "🧾 Fiscalité",
+        "niveau": "⭐ Débutant",
+        "question": "Que signifie CAC en fiscalité camerounaise ?",
+        "choix": ["A) Contribution aux Activités Communales", "B) Centimes Additionnels Communaux", "C) Charges Annuelles Comptables", "D) Crédit Annuel Compensatoire"],
+        "reponse": "B",
+        "explication": "CAC = Centimes Additionnels Communaux. Ce sont des majorations de 10% prélevées sur certains impôts (IS, IRPP, TVA) et reversées aux collectivités territoriales."
+    },
+    {
+        "categorie": "🧾 Fiscalité",
+        "niveau": "⭐ Débutant",
+        "question": "Quel taux de retenue à la source s'applique aux honoraires versés à un consultant résident ?",
+        "choix": ["A) 5%", "B) 11%", "C) 15%", "D) 20%"],
+        "reponse": "B",
+        "explication": "Les honoraires, commissions et courtages versés à des prestataires résidents font l'objet d'une retenue à la source libératoire de 11% (Art. 92 CGI)."
+    },
+    {
+        "categorie": "🧾 Fiscalité",
+        "niveau": "⭐⭐ Intermédiaire",
+        "question": "Qu'est-ce que l'IMF (Impôt Minimum Forfaitaire) ?",
+        "choix": [
+            "A) Un impôt remplaçant la TVA pour les petites entreprises",
+            "B) Un impôt minimum de 1% du CAHT dû même en cas de déficit",
+            "C) Une taxe sur les importations",
+            "D) Un acompte sur l'IRPP"
+        ],
+        "reponse": "B",
+        "explication": "L'IMF est égal à 1% du CAHT, avec un minimum de 500 000 FCFA et un maximum de 2 500 000 FCFA (Art. 62 CGI). Il est dû même lorsque l'entreprise est déficitaire, garantissant une contribution minimale."
+    },
+    {
+        "categorie": "🧾 Fiscalité",
+        "niveau": "⭐⭐ Intermédiaire",
+        "question": "Une société a un bénéfice imposable de 5 000 000 FCFA. Quel est son IS total (avec CAC) ?",
+        "choix": ["A) 1 500 000 FCFA", "B) 1 650 000 FCFA", "C) 1 750 000 FCFA", "D) 2 000 000 FCFA"],
+        "reponse": "B",
+        "explication": "IS = 5 000 000 × 30% = 1 500 000 FCFA. CAC = 1 500 000 × 10% = 150 000 FCFA. Total = 1 650 000 FCFA. (Taux effectif global = 33%)"
+    },
+    {
+        "categorie": "🧾 Fiscalité",
+        "niveau": "⭐⭐ Intermédiaire",
+        "question": "Sur quelle base calcule-t-on la TVA collectée ?",
+        "choix": [
+            "A) Prix TTC de la vente",
+            "B) Prix HT de la vente × 19,25%",
+            "C) Marge bénéficiaire × 19,25%",
+            "D) Chiffre d'affaires annuel × 19,25%"
+        ],
+        "reponse": "B",
+        "explication": "La TVA collectée = Prix HT × 19,25%. Le prix TTC = Prix HT × 1,1925. On applique toujours le taux sur la base hors taxes."
+    },
+    {
+        "categorie": "🧾 Fiscalité",
+        "niveau": "⭐⭐ Intermédiaire",
+        "question": "Quel est le taux IRPP effectif (avec CAC) sur la tranche de revenu annuel entre 3 000 001 et 5 000 000 FCFA ?",
+        "choix": ["A) 15%", "B) 16,5%", "C) 17,5%", "D) 25%"],
+        "reponse": "B",
+        "explication": "Le taux IRPP légal sur cette tranche est 15%. Avec les CAC de 10% : 15% × 1,10 = 16,5%. C'est le taux effectif réellement supporté par le contribuable."
+    },
+    {
+        "categorie": "🧾 Fiscalité",
+        "niveau": "⭐⭐⭐ Avancé",
+        "question": "Comment calcule-t-on le résultat fiscal à partir du résultat comptable ?",
+        "choix": [
+            "A) Résultat fiscal = Résultat comptable uniquement",
+            "B) Résultat fiscal = Résultat comptable + Réintégrations – Déductions",
+            "C) Résultat fiscal = Résultat comptable – Charges non déductibles",
+            "D) Résultat fiscal = Résultat comptable × Taux IS"
+        ],
+        "reponse": "B",
+        "explication": "Résultat fiscal = Résultat comptable + Réintégrations (charges non déductibles : amendes, dépenses somptuaires…) – Déductions (produits exonérés, amortissements différés…). Ce tableau de passage est obligatoire dans la liasse fiscale."
+    },
+    {
+        "categorie": "🧾 Fiscalité",
+        "niveau": "⭐⭐⭐ Avancé",
+        "question": "Quelle est la durée maximale du report déficitaire en IS au Cameroun ?",
+        "choix": ["A) 2 ans", "B) 3 ans", "C) 4 ans", "D) Illimité"],
+        "reponse": "C",
+        "explication": "Le déficit fiscal peut être reporté sur les 4 exercices suivants (Art. 31 CGI). Au-delà, le déficit non absorbé est définitivement perdu."
+    },
+    {
+        "categorie": "🧾 Fiscalité",
+        "niveau": "⭐⭐⭐ Avancé",
+        "question": "Quel est le taux de la Taxe Spéciale sur les Revenus (TSR) versés à un prestataire étranger ?",
+        "choix": ["A) 10%", "B) 11%", "C) 15%", "D) 16,5%"],
+        "reponse": "D",
+        "explication": "La TSR est de 15% + 10% CAC = 16,5% effectif (Art. 99 CGI). Elle est retenue et reversée par le débiteur camerounais qui paie le prestataire non-résident. Des conventions fiscales peuvent réduire ce taux."
+    },
+    # ── COMPTABILITÉ ──
+    {
+        "categorie": "📊 Comptabilité",
+        "niveau": "⭐ Débutant",
+        "question": "Dans le plan comptable OHADA, à quelle classe appartient le compte 'Clients' ?",
+        "choix": ["A) Classe 3", "B) Classe 4", "C) Classe 5", "D) Classe 6"],
+        "reponse": "B",
+        "explication": "Le compte Clients (411) appartient à la Classe 4 — Comptes de Tiers (créances et dettes à court terme). La classe 4 regroupe : fournisseurs (40), clients (41), personnel (42), État (44)."
+    },
+    {
+        "categorie": "📊 Comptabilité",
+        "niveau": "⭐ Débutant",
+        "question": "Quel est le principe fondamental de la comptabilité en partie double ?",
+        "choix": [
+            "A) Tout enregistrement au débit doit avoir une contrepartie égale au crédit",
+            "B) Les charges doivent toujours être supérieures aux produits",
+            "C) L'actif doit toujours être supérieur au passif",
+            "D) Chaque opération est enregistrée deux fois dans le même compte"
+        ],
+        "reponse": "A",
+        "explication": "La partie double signifie que pour chaque écriture, le total des débits = le total des crédits. Si vous débitez 'Banque' de 100 000 FCFA, vous devez créditer un autre compte de 100 000 FCFA."
+    },
+    {
+        "categorie": "📊 Comptabilité",
+        "niveau": "⭐ Débutant",
+        "question": "Quelle est la formule de base du bilan ?",
+        "choix": [
+            "A) Actif = Passif + Résultat",
+            "B) Actif = Capitaux propres + Dettes",
+            "C) Actif – Dettes = Capitaux propres",
+            "D) B et C sont toutes les deux correctes"
+        ],
+        "reponse": "D",
+        "explication": "Les deux formulations sont équivalentes : Actif = Capitaux propres + Dettes (équation du bilan), ce qui implique Actif – Dettes = Capitaux propres. L'actif est toujours égal au passif total."
+    },
+    {
+        "categorie": "📊 Comptabilité",
+        "niveau": "⭐ Débutant",
+        "question": "Une entreprise achète des marchandises pour 200 000 FCFA en espèces. Quelle est l'écriture correcte ?",
+        "choix": [
+            "A) Débit Caisse 200 000 / Crédit Marchandises 200 000",
+            "B) Débit Marchandises 200 000 / Crédit Caisse 200 000",
+            "C) Débit Fournisseurs 200 000 / Crédit Caisse 200 000",
+            "D) Débit Caisse 200 000 / Crédit Fournisseurs 200 000"
+        ],
+        "reponse": "B",
+        "explication": "On débite le compte Marchandises (31) car le stock augmente (actif en hausse = débit), et on crédite la Caisse (53) car elle diminue (actif en baisse = crédit)."
+    },
+    {
+        "categorie": "📊 Comptabilité",
+        "niveau": "⭐ Débutant",
+        "question": "Dans le plan comptable OHADA, quelle classe regroupe les charges ?",
+        "choix": ["A) Classe 5", "B) Classe 6", "C) Classe 7", "D) Classe 8"],
+        "reponse": "B",
+        "explication": "La Classe 6 regroupe toutes les charges : achats (60), transports (61), services extérieurs (62-63), impôts (64), charges de personnel (66), charges financières (67), dotations (68)."
+    },
+    {
+        "categorie": "📊 Comptabilité",
+        "niveau": "⭐⭐ Intermédiaire",
+        "question": "Une entreprise a acheté un véhicule à 8 000 000 FCFA. Durée de vie estimée : 4 ans. Quel est l'amortissement linéaire annuel ?",
+        "choix": ["A) 1 600 000 FCFA", "B) 2 000 000 FCFA", "C) 2 400 000 FCFA", "D) 4 000 000 FCFA"],
+        "reponse": "B",
+        "explication": "Amortissement linéaire = Valeur d'origine / Durée = 8 000 000 / 4 = 2 000 000 FCFA/an. Le taux linéaire est de 25% (1/4). À la fin de l'année 4, la VNC sera zéro."
+    },
+    {
+        "categorie": "📊 Comptabilité",
+        "niveau": "⭐⭐ Intermédiaire",
+        "question": "Quel est le solde intermédiaire de gestion calculé juste après la Valeur Ajoutée ?",
+        "choix": [
+            "A) Résultat d'exploitation",
+            "B) Marge commerciale",
+            "C) Excédent Brut d'Exploitation (EBE)",
+            "D) Résultat net"
+        ],
+        "reponse": "C",
+        "explication": "L'ordre des SIG est : Marge commerciale → VA → EBE → Résultat d'exploitation → RAO → Résultat HAO → Résultat net. L'EBE = VA + Subventions – Charges personnel – Impôts & taxes."
+    },
+    {
+        "categorie": "📊 Comptabilité",
+        "niveau": "⭐⭐ Intermédiaire",
+        "question": "Une charge est engagée en décembre N mais la facture n'est pas encore reçue. Comment l'enregistre-t-on au 31/12/N ?",
+        "choix": [
+            "A) On ne l'enregistre pas, on attend la facture",
+            "B) Débit Charge / Crédit 408 Fournisseurs-factures non parvenues (Charge à payer)",
+            "C) Débit 476 Charges constatées d'avance / Crédit Charge",
+            "D) Débit Trésorerie / Crédit Charge"
+        ],
+        "reponse": "B",
+        "explication": "C'est une Charge À Payer (CAP) : la charge est rattachée à l'exercice N même si la facture n'est pas encore arrivée. On débite le compte de charge concerné et on crédite le compte 408 'Fournisseurs – factures non parvenues'."
+    },
+    {
+        "categorie": "📊 Comptabilité",
+        "niveau": "⭐⭐ Intermédiaire",
+        "question": "Quelle est la formule du Besoin en Fonds de Roulement (BFR) ?",
+        "choix": [
+            "A) BFR = Capitaux propres – Actif immobilisé",
+            "B) BFR = Stocks + Créances – Dettes CT d'exploitation",
+            "C) BFR = Trésorerie actif – Trésorerie passif",
+            "D) BFR = Actif circulant / Dettes CT"
+        ],
+        "reponse": "B",
+        "explication": "BFR = Stocks + Créances clients – Dettes fournisseurs – Dettes fiscales & sociales. Un BFR positif signifie que l'entreprise doit financer un besoin. Un BFR négatif est une ressource (favorable pour la trésorerie)."
+    },
+    {
+        "categorie": "📊 Comptabilité",
+        "niveau": "⭐⭐⭐ Avancé",
+        "question": "Une immobilisation est cédée à 3 000 000 FCFA. Sa valeur d'origine était 10 000 000 FCFA et les amortissements cumulés sont de 8 000 000 FCFA. Quel est le résultat de cession ?",
+        "choix": [
+            "A) Plus-value de 1 000 000 FCFA",
+            "B) Moins-value de 7 000 000 FCFA",
+            "C) Plus-value de 3 000 000 FCFA",
+            "D) Moins-value de 1 000 000 FCFA"
+        ],
+        "reponse": "A",
+        "explication": "VNC = 10 000 000 – 8 000 000 = 2 000 000 FCFA. Prix de cession = 3 000 000 FCFA. Résultat = 3 000 000 – 2 000 000 = +1 000 000 FCFA (plus-value). Cette plus-value est imposable à l'IS."
+    },
+    {
+        "categorie": "📊 Comptabilité",
+        "niveau": "⭐⭐⭐ Avancé",
+        "question": "Comment interpréter un Fonds de Roulement Net (FRN) négatif ?",
+        "choix": [
+            "A) C'est toujours un signe positif, l'entreprise est performante",
+            "B) Les ressources durables ne couvrent pas les actifs immobilisés : déséquilibre financier",
+            "C) L'entreprise a trop de trésorerie",
+            "D) Cela signifie que le BFR est nul"
+        ],
+        "reponse": "B",
+        "explication": "FRN = Capitaux permanents (CP + dettes LT) – Actif immobilisé net. Un FRN négatif signifie que des dettes court terme financent des actifs immobilisés : situation précaire car les ressources ne sont pas adaptées aux emplois durables."
+    },
+    {
+        "categorie": "📊 Comptabilité",
+        "niveau": "⭐⭐⭐ Avancé",
+        "question": "Dans le Tableau des Flux de Trésorerie, à quelle section appartient le remboursement d'un emprunt bancaire ?",
+        "choix": [
+            "A) Flux d'exploitation",
+            "B) Flux d'investissement",
+            "C) Flux de financement",
+            "D) Variation du BFR"
+        ],
+        "reponse": "C",
+        "explication": "Le remboursement d'un emprunt bancaire est un flux de financement négatif (sortie). La section C 'Flux de financement' comprend : emprunts souscrits (+), remboursements (–), augmentations de capital (+), dividendes versés (–)."
+    },
+    {
+        "categorie": "📊 Comptabilité",
+        "niveau": "⭐⭐⭐ Avancé",
+        "question": "Quel est le lien entre résultat comptable et résultat fiscal ?",
+        "choix": [
+            "A) Ils sont toujours identiques",
+            "B) Résultat fiscal = Résultat comptable + Réintégrations – Déductions extracomptables",
+            "C) Le résultat fiscal est toujours inférieur au résultat comptable",
+            "D) Le résultat fiscal s'obtient en soustrayant l'IS du résultat comptable"
+        ],
+        "reponse": "B",
+        "explication": "Le résultat fiscal s'obtient par retraitement extracomptable : on réintègre les charges non déductibles (amendes, excès d'amortissements, provisions non réglementées) et on déduit les produits exonérés. L'IS est alors calculé sur ce résultat fiscal, pas sur le résultat comptable."
+    },
+]
+
+# ─────────────────────────────────────────────
+# ÉTAT DES QUIZ PAR UTILISATEUR
+# ─────────────────────────────────────────────
+quiz_sessions: dict = {}
+scores: dict = {}
+
+def get_score(user_id: str) -> dict:
+    if user_id not in scores:
+        scores[user_id] = {"correct": 0, "total": 0}
+    return scores[user_id]
+
+def nouvelle_question(user_id: str) -> dict:
+    question = random.choice(BANQUE_QUESTIONS)
+    quiz_sessions[user_id] = question
+    return question
+
+def formater_question(q: dict, num_total: int, score_actuel: dict) -> str:
+    choix_text = "\n".join(q["choix"])
+    return (
+        f"{q['categorie']} | {q['niveau']}\n\n"
+        f"❓ *{q['question']}*\n\n"
+        f"{choix_text}\n\n"
+        f"_Répondez par A, B, C ou D_\n"
+        f"📊 Score actuel : {score_actuel['correct']}/{score_actuel['total']}"
+    )
+
+# ─────────────────────────────────────────────
 # PERSISTANCE
 # ─────────────────────────────────────────────
 def charger_historiques():
@@ -687,24 +987,83 @@ async def cmd_etats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_calculer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(CALCULER_TEXT, parse_mode="Markdown")
 
+async def cmd_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    score = get_score(user_id)
+    q = nouvelle_question(user_id)
+    texte = formater_question(q, len(BANQUE_QUESTIONS), score)
+    await update.message.reply_text(texte, parse_mode="Markdown")
+
+async def cmd_score(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    s = get_score(user_id)
+    total = s["total"]
+    correct = s["correct"]
+    if total == 0:
+        await update.message.reply_text(
+            "📊 *Votre score*\n\nVous n'avez pas encore répondu à des questions.\nTapez /quiz pour commencer !",
+            parse_mode="Markdown"
+        )
+        return
+    pct = round(correct / total * 100)
+    if pct >= 80:
+        mention = "🏆 Excellent ! Vous maîtrisez le sujet."
+    elif pct >= 60:
+        mention = "👍 Bien ! Continuez à réviser."
+    elif pct >= 40:
+        mention = "📖 Passable. Relisez les cours (/cours)."
+    else:
+        mention = "💪 Courage ! Consultez /cours et /etats pour progresser."
+    await update.message.reply_text(
+        f"📊 *Votre score JKBOT*\n\n"
+        f"✅ Bonnes réponses : {correct}\n"
+        f"❌ Mauvaises réponses : {total - correct}\n"
+        f"📝 Total questions : {total}\n"
+        f"🎯 Taux de réussite : *{pct}%*\n\n"
+        f"{mention}\n\n"
+        f"Tapez /quiz pour continuer à vous entraîner !",
+        parse_mode="Markdown"
+    )
+
 # ─────────────────────────────────────────────
 # HANDLER MESSAGES
 # ─────────────────────────────────────────────
 async def repondre(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
-    question = update.message.text
+    texte_recu = update.message.text.strip()
     if user_id not in historiques:
         historiques[user_id] = []
 
-    resultat_calcul = traiter_calcul(question)
+    # ── Détection réponse au quiz ──
+    if user_id in quiz_sessions and texte_recu.upper() in ("A", "B", "C", "D"):
+        q = quiz_sessions[user_id]
+        reponse_user = texte_recu.upper()
+        bonne_reponse = q["reponse"]
+        score = get_score(user_id)
+        score["total"] += 1
+        if reponse_user == bonne_reponse:
+            score["correct"] += 1
+            feedback = f"✅ *Bonne réponse !* La réponse était bien *{bonne_reponse}*.\n\n"
+        else:
+            feedback = f"❌ *Mauvaise réponse.* Vous avez répondu *{reponse_user}*, la bonne réponse était *{bonne_reponse}*.\n\n"
+        explication = f"💡 *Explication :*\n{q['explication']}\n\n"
+        score_line = f"📊 Score : {score['correct']}/{score['total']} ({round(score['correct']/score['total']*100)}%)\n\n"
+        suite = "Tapez /quiz pour une nouvelle question ou /score pour voir votre bilan."
+        del quiz_sessions[user_id]
+        await update.message.reply_text(feedback + explication + score_line + suite, parse_mode="Markdown")
+        return
+
+    # ── Calculs automatiques ──
+    resultat_calcul = traiter_calcul(texte_recu)
     if resultat_calcul:
         await update.message.reply_text(resultat_calcul, parse_mode="Markdown")
         return
 
+    # ── Réponse IA ──
     await update.message.reply_chat_action("typing")
     try:
         client = Groq(api_key=CLE_GROQ)
-        historiques[user_id].append({"role": "user", "content": question})
+        historiques[user_id].append({"role": "user", "content": texte_recu})
 
         reponse = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -749,6 +1108,8 @@ def main():
     app.add_handler(CommandHandler("cours", cmd_cours))
     app.add_handler(CommandHandler("etats", cmd_etats))
     app.add_handler(CommandHandler("calculer", cmd_calculer))
+    app.add_handler(CommandHandler("quiz", cmd_quiz))
+    app.add_handler(CommandHandler("score", cmd_score))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, repondre))
 
     print("✅ JKBOT prêt. Connexion à Telegram...")
