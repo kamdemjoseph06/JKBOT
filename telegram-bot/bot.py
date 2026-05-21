@@ -1898,6 +1898,85 @@ async def cmd_historique_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE)
     else:
         await update.message.reply_text(texte, parse_mode="Markdown")
 
+async def cmd_supprimer_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Usage : /supprimer_cgi CODE_ADMIN ID
+    Exemple : /supprimer_cgi JK2027ADMIN 3
+    """
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text(
+            "⚙️ *Suppression d'une disposition CGI*\n\n"
+            "Usage : `/supprimer_cgi CODE ID`\n\n"
+            "Exemple : `/supprimer_cgi JK2027ADMIN 3`\n\n"
+            "_Consultez `/historique_cgi` pour voir les IDs disponibles._",
+            parse_mode="Markdown"
+        )
+        return
+
+    code_saisi = context.args[0]
+    if code_saisi != ADMIN_CODE:
+        await update.message.reply_text("🔒 Code administrateur invalide.")
+        return
+
+    try:
+        cible_id = int(context.args[1])
+    except ValueError:
+        await update.message.reply_text("❌ ID invalide. Ex : `/supprimer_cgi JK2027ADMIN 3`", parse_mode="Markdown")
+        return
+
+    updates = charger_cgi_updates()
+    entree = next((u for u in updates if u["id"] == cible_id), None)
+
+    if not entree:
+        ids_dispo = ", ".join(str(u["id"]) for u in updates) or "aucun"
+        await update.message.reply_text(
+            f"❌ Aucune disposition avec l'ID *#{cible_id}*.\n\n"
+            f"IDs disponibles : `{ids_dispo}`\n"
+            f"Tapez /historique\\_cgi pour consulter le journal.",
+            parse_mode="Markdown"
+        )
+        return
+
+    # Suppression
+    updates_restants = [u for u in updates if u["id"] != cible_id]
+    sauvegarder_cgi_updates(updates_restants)
+
+    # Confirmation + push GitHub
+    await update.message.reply_text(
+        f"🗑️ *Disposition #{cible_id} supprimée*\n\n"
+        f"📌 *Titre :* {entree['titre']}\n"
+        f"📅 *Ajoutée le :* {entree.get('date_ajout', '—')}\n"
+        f"✍️ *Par :* @{entree.get('auteur', 'admin')}\n\n"
+        f"🔄 Synchronisation GitHub en cours...",
+        parse_mode="Markdown"
+    )
+
+    message_commit = (
+        f"CGI : suppression #{cible_id} '{entree['titre']}' "
+        f"({entree['annee']}) [{datetime.now().strftime('%Y-%m-%d')}]"
+    )
+    resultat = await push_fichier_github(
+        chemin_local=CGI_UPDATES_FILE,
+        chemin_repo="telegram-bot/cgi_updates.json",
+        message_commit=message_commit
+    )
+
+    if resultat["ok"]:
+        restants = len(updates_restants)
+        await update.message.reply_text(
+            f"🐙 *GitHub synchronisé !*\n"
+            f"[Voir le commit]({resultat['url']})\n\n"
+            f"_Il reste {restants} disposition(s) dans la base._\n"
+            f"Tapez /historique\\_cgi pour vérifier.",
+            parse_mode="Markdown",
+            disable_web_page_preview=True
+        )
+    else:
+        await update.message.reply_text(
+            f"⚠️ Suppression locale OK, GitHub non synchronisé : `{resultat['erreur']}`",
+            parse_mode="Markdown"
+        )
+
 async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     historiques[user_id] = []
@@ -1953,6 +2032,7 @@ def main():
     app.add_handler(CommandHandler("lf", cmd_lf))
     app.add_handler(CommandHandler("maj_cgi", cmd_maj_cgi))
     app.add_handler(CommandHandler("historique_cgi", cmd_historique_cgi))
+    app.add_handler(CommandHandler("supprimer_cgi", cmd_supprimer_cgi))
     # Messages libres
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, repondre))
 
