@@ -1811,12 +1811,14 @@ async def cmd_maj_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     updates = charger_cgi_updates()
     nouvel_id = max((u["id"] for u in updates), default=0) + 1
+    auteur = update.effective_user.username or update.effective_user.first_name or "admin"
     nouvelle_entree = {
         "id": nouvel_id,
         "annee": annee,
         "titre": titre,
         "contenu": contenu,
-        "date_ajout": datetime.now().strftime("%Y-%m-%d")
+        "date_ajout": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "auteur": auteur
     }
     updates.append(nouvelle_entree)
     sauvegarder_cgi_updates(updates)
@@ -1852,6 +1854,49 @@ async def cmd_maj_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Tapez /nouveautes pour voir les mises à jour.",
             parse_mode="Markdown"
         )
+
+async def cmd_historique_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    updates = charger_cgi_updates()
+    if not updates:
+        await update.message.reply_text(
+            "📋 Aucune mise à jour enregistrée.\n"
+            "Utilisez `/maj_cgi` pour ajouter les nouvelles dispositions fiscales.",
+            parse_mode="Markdown"
+        )
+        return
+
+    tries = sorted(updates, key=lambda x: (x["annee"], x.get("date_ajout", "")), reverse=True)
+    annees = sorted(set(u["annee"] for u in tries), reverse=True)
+
+    texte = "📜 *Journal des mises à jour CGI — JKBOT*\n"
+    texte += f"_Total : {len(updates)} disposition(s) enregistrée(s)_\n\n"
+
+    for annee in annees:
+        entrees = [u for u in tries if u["annee"] == annee]
+        texte += f"┌─── *{annee}* ── {len(entrees)} disposition(s)\n"
+        for i, e in enumerate(entrees):
+            prefixe = "├" if i < len(entrees) - 1 else "└"
+            date = e.get("date_ajout", "—")
+            auteur = e.get("auteur", "admin")
+            texte += (
+                f"{prefixe}─ *#{e['id']}* {e['titre']}\n"
+                f"   📅 {date}  •  ✍️ @{auteur}\n"
+                f"   _{e['contenu'][:120]}{'…' if len(e['contenu']) > 120 else ''}_\n"
+            )
+        texte += "\n"
+
+    texte += (
+        "─────────────────────────\n"
+        "➕ Ajouter : `/maj_cgi CODE ANNEE TITRE | CONTENU`\n"
+        "🔎 Consulter : `/lf ANNEE`\n"
+        "📢 Voir résumé : `/nouveautes`"
+    )
+
+    if len(texte) > 4096:
+        for i in range(0, len(texte), 4096):
+            await update.message.reply_text(texte[i:i+4096], parse_mode="Markdown")
+    else:
+        await update.message.reply_text(texte, parse_mode="Markdown")
 
 async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
@@ -1907,6 +1952,7 @@ def main():
     app.add_handler(CommandHandler("nouveautes", cmd_nouveautes))
     app.add_handler(CommandHandler("lf", cmd_lf))
     app.add_handler(CommandHandler("maj_cgi", cmd_maj_cgi))
+    app.add_handler(CommandHandler("historique_cgi", cmd_historique_cgi))
     # Messages libres
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, repondre))
 
