@@ -440,6 +440,7 @@ Ventes marchandises
 *Variation trésorerie = FNE + FNI + FNF*
 *Trésorerie finale = Trésorerie initiale + Variation* ✅
 
+
 ━━━━━━━━━━━━━━━━━━━━━
 📋 *4. TABLEAU DE VARIATION DES CP*
 ━━━━━━━━━━━━━━━━━━━━━
