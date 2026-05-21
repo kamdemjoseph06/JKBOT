@@ -14,8 +14,8 @@ from telegram.ext import (
 )
 from groq import Groq
 
-TOKEN_TELEGRAM = os.environ.get("TOKEN_TELEGRAM")
-CLE_GROQ = os.environ.get("CLE_GROQ")
+TOKEN_TELEGRAM = os.environ.get("TOKEN_TELEGRA")
+CLE_GROQ = os.environ.get("CLE_GRO")
 ADMIN_CODE = os.environ.get("JKBOT_ADMIN_CODE", "JK2027ADMIN")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "kamdemjoseph06/JKBOT")
