@@ -558,7 +558,7 @@ def appeler_groq(user_id, question):
 
     client = Groq(api_key=CLE_GROQ)
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         messages=messages,
         max_tokens=1500,
         temperature=0.3
