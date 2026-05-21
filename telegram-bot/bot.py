@@ -3,6 +3,8 @@ import json
 import os
 import sys
 import random
+import base64
+import httpx
 from datetime import datetime, timezone
 from telegram import Update
 from telegram.ext import (
@@ -15,6 +17,8 @@ from groq import Groq
 TOKEN_TELEGRAM = os.environ.get("TOKEN_TELEGRA")
 CLE_GROQ = os.environ.get("CLE_GRO")
 ADMIN_CODE = os.environ.get("JKBOT_ADMIN_CODE", "JK2027ADMIN")
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+GITHUB_REPO = os.environ.get("GITHUB_REPO", "kamdemjoseph06/JKBOT")
 DB_FILE = "historiques.json"
 CGI_UPDATES_FILE = "cgi_updates.json"
 RAPPEL_FILE = "rappel_subscribers.json"
@@ -1227,6 +1231,35 @@ def sauvegarder_cgi_updates(data: list):
     except Exception as e:
         print(f"⚠️ Erreur sauvegarde CGI updates: {e}")
 
+async def push_fichier_github(chemin_local: str, chemin_repo: str, message_commit: str) -> dict:
+    """Pousse un fichier local vers GitHub via l'API REST. Retourne {"ok": True} ou {"ok": False, "erreur": ...}"""
+    if not GITHUB_TOKEN:
+        return {"ok": False, "erreur": "GITHUB_TOKEN non configuré"}
+    try:
+        with open(chemin_local, "r", encoding="utf-8") as f:
+            contenu_brut = f.read()
+        contenu_b64 = base64.b64encode(contenu_brut.encode("utf-8")).decode("ascii")
+        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{chemin_repo}"
+        headers = {
+            "Authorization": f"Bearer {GITHUB_TOKEN}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+        }
+        async with httpx.AsyncClient(timeout=15) as client:
+            r_get = await client.get(url, headers=headers)
+            sha = r_get.json().get("sha") if r_get.status_code == 200 else None
+            payload = {"message": message_commit, "content": contenu_b64}
+            if sha:
+                payload["sha"] = sha
+            r_put = await client.put(url, headers=headers, json=payload)
+            if r_put.status_code in (200, 201):
+                html_url = r_put.json().get("content", {}).get("html_url", "")
+                return {"ok": True, "url": html_url}
+            else:
+                return {"ok": False, "erreur": r_put.json().get("message", str(r_put.status_code))}
+    except Exception as e:
+        return {"ok": False, "erreur": str(e)}
+
 def get_system_prompt_dynamique(langue: str = "fr") -> str:
     updates = charger_cgi_updates()
     if not updates:
@@ -1787,14 +1820,38 @@ async def cmd_maj_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
     updates.append(nouvelle_entree)
     sauvegarder_cgi_updates(updates)
+
+    # Confirmation immédiate
     await update.message.reply_text(
         f"✅ *Mise à jour CGI {annee} enregistrée !*\n\n"
         f"📌 *Titre :* {titre}\n"
         f"📝 *Contenu :* {contenu[:300]}{'...' if len(contenu)>300 else ''}\n\n"
-        f"Le bot intégrera automatiquement cette disposition dans toutes ses réponses.\n"
-        f"Tapez /nouveautes pour voir toutes les mises à jour.",
+        f"Le bot intègre automatiquement cette disposition dans ses réponses.\n"
+        f"🔄 Synchronisation GitHub en cours...",
         parse_mode="Markdown"
     )
+
+    # Push automatique vers GitHub
+    message_commit = f"CGI {annee} : {titre} [{datetime.now().strftime('%Y-%m-%d')}]"
+    resultat = await push_fichier_github(
+        chemin_local=CGI_UPDATES_FILE,
+        chemin_repo="telegram-bot/cgi_updates.json",
+        message_commit=message_commit
+    )
+    if resultat["ok"]:
+        await update.message.reply_text(
+            f"🐙 *GitHub synchronisé !*\n"
+            f"[Voir cgi\\_updates.json sur GitHub]({resultat['url']})\n\n"
+            f"Tapez /nouveautes pour voir toutes les mises à jour.",
+            parse_mode="Markdown",
+            disable_web_page_preview=True
+        )
+    else:
+        await update.message.reply_text(
+            f"⚠️ Sauvegarde locale OK, mais GitHub non synchronisé : `{resultat['erreur']}`\n"
+            f"Tapez /nouveautes pour voir les mises à jour.",
+            parse_mode="Markdown"
+        )
 
 async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
