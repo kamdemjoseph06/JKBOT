@@ -3,17 +3,21 @@ import json
 import os
 import sys
 import random
+from datetime import datetime, timezone
 from telegram import Update
 from telegram.ext import (
     Application, CommandHandler,
     MessageHandler, filters,
-    ContextTypes
+    ContextTypes, JobQueue
 )
 from groq import Groq
 
 TOKEN_TELEGRAM = os.environ.get("TOKEN_TELEGRA")
 CLE_GROQ = os.environ.get("CLE_GRO")
+ADMIN_CODE = os.environ.get("JKBOT_ADMIN_CODE", "JK2027ADMIN")
 DB_FILE = "historiques.json"
+CGI_UPDATES_FILE = "cgi_updates.json"
+RAPPEL_FILE = "rappel_subscribers.json"
 
 # ─────────────────────────────────────────────
 # SYSTEM PROMPT COMPLET
@@ -1204,6 +1208,132 @@ def sauvegarder_historiques(data):
 
 historiques = charger_historiques()
 
+# ─────────────────────────────────────────────
+# BASE CGI AUTO-ÉVOLUTIVE
+# ─────────────────────────────────────────────
+def charger_cgi_updates() -> list:
+    if os.path.exists(CGI_UPDATES_FILE):
+        try:
+            with open(CGI_UPDATES_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"⚠️ Erreur chargement CGI updates: {e}")
+    return []
+
+def sauvegarder_cgi_updates(data: list):
+    try:
+        with open(CGI_UPDATES_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print(f"⚠️ Erreur sauvegarde CGI updates: {e}")
+
+def get_system_prompt_dynamique(langue: str = "fr") -> str:
+    updates = charger_cgi_updates()
+    if not updates:
+        base = SYSTEM_PROMPT
+    else:
+        annees = sorted(set(u["annee"] for u in updates), reverse=True)
+        blocs = []
+        for annee in annees:
+            entrees = [u for u in updates if u["annee"] == annee]
+            bloc = f"\n\n╔══════════════════════════════════════════╗\n║  MISES À JOUR CGI {annee}                 ║\n╚══════════════════════════════════════════╝\n"
+            for e in entrees:
+                bloc += f"\n▸ *{e['titre']}*\n{e['contenu']}\n"
+            blocs.append(bloc)
+        base = SYSTEM_PROMPT + "\n\n" + "\n".join(blocs)
+    if langue == "en":
+        base += "\nPlease respond in English."
+    return base
+
+# ─────────────────────────────────────────────
+# SYSTÈME DE RAPPELS MENSUELS
+# ─────────────────────────────────────────────
+def charger_rappel_subscribers() -> set:
+    if os.path.exists(RAPPEL_FILE):
+        try:
+            with open(RAPPEL_FILE, "r", encoding="utf-8") as f:
+                return set(json.load(f))
+        except Exception as e:
+            print(f"⚠️ Erreur chargement rappels: {e}")
+    return set()
+
+def sauvegarder_rappel_subscribers(data: set):
+    try:
+        with open(RAPPEL_FILE, "w", encoding="utf-8") as f:
+            json.dump(list(data), f, ensure_ascii=False)
+    except Exception as e:
+        print(f"⚠️ Erreur sauvegarde rappels: {e}")
+
+rappel_subscribers: set = charger_rappel_subscribers()
+
+ECHEANCES_PAR_MOIS = {
+    1:  ["📌 15 jan — Déclaration et paiement TVA (décembre)",
+         "📌 15 jan — Acompte IS (si applicable)",
+         "📌 31 jan — Déclaration annuelle DSF (si clôture au 31/12)",
+         "📌 31 jan — Déclaration IRPP salariés (année précédente)"],
+    2:  ["📌 15 fév — TVA (janvier)",
+         "📌 28 fév — Patente et droits de licence (si non payés en jan)"],
+    3:  ["📌 15 mar — TVA (février)",
+         "📌 31 mar — Liasse fiscale complète + DSF définitive",
+         "📌 31 mar — Déclaration IS définitive (si clôture 31/12)"],
+    4:  ["📌 15 avr — TVA (mars)",
+         "📌 30 avr — Acompte IS 1er trimestre (25% de l'IS N-1)"],
+    5:  ["📌 15 mai — TVA (avril)",
+         "📌 31 mai — Déclaration CNPS 1er trimestre"],
+    6:  ["📌 15 jun — TVA (mai)",
+         "📌 30 jun — Acompte IS 2ème trimestre"],
+    7:  ["📌 15 jul — TVA (juin)",
+         "📌 31 jul — Déclaration CNPS 2ème trimestre"],
+    8:  ["📌 15 aoû — TVA (juillet)"],
+    9:  ["📌 15 sep — TVA (août)",
+         "📌 30 sep — Acompte IS 3ème trimestre"],
+    10: ["📌 15 oct — TVA (septembre)",
+         "📌 31 oct — Déclaration CNPS 3ème trimestre"],
+    11: ["📌 15 nov — TVA (octobre)"],
+    12: ["📌 15 déc — TVA (novembre)",
+         "📌 31 déc — Inventaire obligatoire (clôture exercice)",
+         "📌 31 déc — Acompte IS 4ème trimestre"],
+}
+
+MOIS_FR = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+           "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
+
+def get_rappel_mensuel(mois: int, annee: int) -> str:
+    echeances = ECHEANCES_PAR_MOIS.get(mois, [])
+    mois_nom = MOIS_FR[mois]
+    texte = (
+        f"📅 *RAPPEL FISCAL — {mois_nom} {annee}*\n"
+        f"_Échéances à ne pas manquer :_\n\n"
+    )
+    if echeances:
+        texte += "\n".join(echeances)
+    else:
+        texte += "Aucune échéance majeure ce mois-ci."
+    texte += (
+        "\n\n💡 Utilisez /calendrier pour le calendrier complet\n"
+        "ou /tva, /is, /irpp pour calculer vos impôts."
+    )
+    return texte
+
+async def job_rappel_mensuel(context) -> None:
+    maintenant = datetime.now()
+    if maintenant.day != 1:
+        return
+    mois = maintenant.month
+    annee = maintenant.year
+    message = get_rappel_mensuel(mois, annee)
+    subs = charger_rappel_subscribers()
+    envoyes = 0
+    echecs = 0
+    for chat_id in list(subs):
+        try:
+            await context.bot.send_message(chat_id=int(chat_id), text=message, parse_mode="Markdown")
+            envoyes += 1
+        except Exception as e:
+            print(f"⚠️ Rappel non envoyé à {chat_id}: {e}")
+            echecs += 1
+    print(f"📅 Rappels envoyés: {envoyes} OK, {echecs} échecs")
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -1229,12 +1359,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• /lang — 🇫🇷/🇬🇧 Changer la langue",
         parse_mode="Markdown"
     )
-
-async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
-    historiques[user_id] = []
-    sauvegarder_historiques(historiques)
-    await update.message.reply_text("🔄 Historique effacé !")
 
 async def cmd_aide(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(AIDE_TEXT, parse_mode="Markdown")
@@ -1506,8 +1630,7 @@ async def repondre(update: Update, context: ContextTypes.DEFAULT_TYPE):
         client = Groq(api_key=CLE_GROQ)
         historiques[user_id].append({"role": "user", "content": texte_recu})
         langue = lang_prefs.get(user_id, "fr")
-        lang_instruction = "\nPlease respond in English." if langue == "en" else ""
-        system = SYSTEM_PROMPT + lang_instruction
+        system = get_system_prompt_dynamique(langue)
 
         reponse = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -1531,6 +1654,154 @@ async def repondre(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print(f"❌ Erreur Groq: {e}")
         await update.message.reply_text("❌ Erreur technique. Réessayez dans quelques instants.")
+
+# ─────────────────────────────────────────────
+# NOUVEAUX HANDLERS : RAPPELS, CGI ÉVOLUTIF
+# ─────────────────────────────────────────────
+async def cmd_rappel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    if user_id in rappel_subscribers:
+        rappel_subscribers.discard(user_id)
+        sauvegarder_rappel_subscribers(rappel_subscribers)
+        await update.message.reply_text(
+            "🔕 *Rappels désactivés.*\n\n"
+            "Vous ne recevrez plus de notifications mensuelles.\n"
+            "Tapez /rappel pour les réactiver.",
+            parse_mode="Markdown"
+        )
+    else:
+        rappel_subscribers.add(user_id)
+        sauvegarder_rappel_subscribers(rappel_subscribers)
+        maintenant = datetime.now()
+        apercu = get_rappel_mensuel(maintenant.month, maintenant.year)
+        await update.message.reply_text(
+            "🔔 *Rappels mensuels activés !*\n\n"
+            "Vous recevrez automatiquement le 1er de chaque mois "
+            "les échéances fiscales du mois.\n\n"
+            f"*Aperçu du mois en cours :*\n\n{apercu}\n\n"
+            "_Tapez /rappel à nouveau pour désactiver._",
+            parse_mode="Markdown"
+        )
+
+async def cmd_nouveautes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    updates = charger_cgi_updates()
+    if not updates:
+        await update.message.reply_text(
+            "📋 Aucune mise à jour enregistrée pour l'instant.\n"
+            "Les nouvelles dispositions du CGI seront ajoutées ici."
+        )
+        return
+    tri = sorted(updates, key=lambda x: (x["annee"], x["id"]), reverse=True)
+    annees_affichees = set()
+    texte = "📢 *Nouveautés fiscales & comptables*\n\n"
+    for u in tri:
+        if u["annee"] not in annees_affichees:
+            texte += f"━━━━ *{u['annee']}* ━━━━\n"
+            annees_affichees.add(u["annee"])
+        texte += f"▸ *{u['titre']}*\n_{u['contenu'][:200]}{'...' if len(u['contenu'])>200 else ''}_\n\n"
+    texte += "💬 Posez vos questions sur ces nouveautés directement !"
+    if len(texte) > 4096:
+        for i in range(0, len(texte), 4096):
+            await update.message.reply_text(texte[i:i+4096], parse_mode="Markdown")
+    else:
+        await update.message.reply_text(texte, parse_mode="Markdown")
+
+async def cmd_lf(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        annee_actuelle = datetime.now().year
+        await update.message.reply_text(
+            f"Usage : `/lf {annee_actuelle}` ou `/lf {annee_actuelle+1}`\n"
+            "Affiche les dispositions de la Loi de Finances enregistrées pour une année.",
+            parse_mode="Markdown"
+        )
+        return
+    try:
+        annee = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("❌ Année invalide. Ex : `/lf 2027`", parse_mode="Markdown")
+        return
+    if annee == 2025:
+        await update.message.reply_text(LF2025_TEXT, parse_mode="Markdown")
+        return
+    updates = charger_cgi_updates()
+    entrees = [u for u in updates if u["annee"] == annee]
+    if not entrees:
+        await update.message.reply_text(
+            f"📋 Aucune disposition enregistrée pour {annee}.\n\n"
+            f"Dès que la Loi de Finances {annee} sera publiée, "
+            "l'administrateur pourra les ajouter avec `/maj_cgi`.",
+            parse_mode="Markdown"
+        )
+        return
+    texte = f"📜 *Loi de Finances {annee} — Dispositions enregistrées*\n\n"
+    for e in entrees:
+        texte += f"▸ *{e['titre']}*\n{e['contenu']}\n\n"
+    if len(texte) > 4096:
+        for i in range(0, len(texte), 4096):
+            await update.message.reply_text(texte[i:i+4096], parse_mode="Markdown")
+    else:
+        await update.message.reply_text(texte, parse_mode="Markdown")
+
+async def cmd_maj_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Usage : /maj_cgi CODE_ADMIN ANNEE TITRE | CONTENU
+    Exemple : /maj_cgi JK2027ADMIN 2027 Nouveau taux IS | Le taux d'IS passe à 28% pour les grandes entreprises.
+    """
+    if not context.args or len(context.args) < 3:
+        await update.message.reply_text(
+            "⚙️ *Commande admin — Mise à jour CGI*\n\n"
+            "Usage : `/maj_cgi CODE ANNEE TITRE | CONTENU`\n\n"
+            "Exemple :\n"
+            "`/maj_cgi JK2027ADMIN 2027 Nouveau taux IS | Le taux passe à 28%.`\n\n"
+            "_Réservé à l'administrateur._",
+            parse_mode="Markdown"
+        )
+        return
+    code_saisi = context.args[0]
+    if code_saisi != ADMIN_CODE:
+        await update.message.reply_text("🔒 Code administrateur invalide.")
+        return
+    try:
+        annee = int(context.args[1])
+    except ValueError:
+        await update.message.reply_text("❌ Année invalide.")
+        return
+    reste = " ".join(context.args[2:])
+    if "|" not in reste:
+        await update.message.reply_text("❌ Séparez le TITRE et le CONTENU avec `|`.", parse_mode="Markdown")
+        return
+    titre, contenu = reste.split("|", 1)
+    titre = titre.strip()
+    contenu = contenu.strip()
+    if not titre or not contenu:
+        await update.message.reply_text("❌ Titre ou contenu vide.")
+        return
+    updates = charger_cgi_updates()
+    nouvel_id = max((u["id"] for u in updates), default=0) + 1
+    nouvelle_entree = {
+        "id": nouvel_id,
+        "annee": annee,
+        "titre": titre,
+        "contenu": contenu,
+        "date_ajout": datetime.now().strftime("%Y-%m-%d")
+    }
+    updates.append(nouvelle_entree)
+    sauvegarder_cgi_updates(updates)
+    await update.message.reply_text(
+        f"✅ *Mise à jour CGI {annee} enregistrée !*\n\n"
+        f"📌 *Titre :* {titre}\n"
+        f"📝 *Contenu :* {contenu[:300]}{'...' if len(contenu)>300 else ''}\n\n"
+        f"Le bot intégrera automatiquement cette disposition dans toutes ses réponses.\n"
+        f"Tapez /nouveautes pour voir toutes les mises à jour.",
+        parse_mode="Markdown"
+    )
+
+async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    historiques[user_id] = []
+    dsf_sessions.discard(user_id)
+    sauvegarder_historiques(historiques)
+    await update.message.reply_text("🔄 Historique effacé et mode DSF réinitialisé !")
 
 # ─────────────────────────────────────────────
 # LANCEMENT
@@ -1574,8 +1845,28 @@ def main():
     app.add_handler(CommandHandler("quiz_fiscal", cmd_quiz_fiscal))
     app.add_handler(CommandHandler("quiz_compta", cmd_quiz_compta))
     app.add_handler(CommandHandler("score", cmd_score))
-    # Reset DSF aussi via /reset
+    # Rappels & CGI évolutif
+    app.add_handler(CommandHandler("rappel", cmd_rappel))
+    app.add_handler(CommandHandler("nouveautes", cmd_nouveautes))
+    app.add_handler(CommandHandler("lf", cmd_lf))
+    app.add_handler(CommandHandler("maj_cgi", cmd_maj_cgi))
+    # Messages libres
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, repondre))
+
+    # ── Job queue : rappels mensuels (vérifie chaque jour à 7h00) ──
+    job_queue = app.job_queue
+    if job_queue:
+        import pytz
+        tz_cm = pytz.timezone("Africa/Douala")
+        from datetime import time as dt_time
+        job_queue.run_daily(
+            job_rappel_mensuel,
+            time=dt_time(hour=7, minute=0, tzinfo=tz_cm),
+            name="rappel_mensuel"
+        )
+        print("📅 Job rappels mensuels programmé à 07h00 (heure Douala)")
+    else:
+        print("⚠️ JobQueue non disponible — rappels désactivés")
 
     print("✅ JKBOT prêt. Connexion à Telegram...")
     app.run_polling()

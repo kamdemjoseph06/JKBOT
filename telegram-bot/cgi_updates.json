@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "annee": 2026,
+    "titre": "Taux IS réduit PME (CGI 2026)",
+    "contenu": "Taux réduit d'IS à 25% pour les PME dont le CA annuel est inférieur à 3 milliards FCFA. Le taux normal reste à 30%. Les PME du secteur agricole bénéficient d'un taux de 20%.",
+    "date_ajout": "2026-01-01"
+  },
+  {
+    "id": 2,
+    "annee": 2026,
+    "titre": "IMF — Taux plancher (CGI 2026)",
+    "contenu": "L'IMF est fixée à 5 000 FCFA minimum. Le taux applicable est de 1% du CA HT pour le régime du réel. Les entreprises en déficit paient l'IMF plancher.",
+    "date_ajout": "2026-01-01"
+  }
+]
