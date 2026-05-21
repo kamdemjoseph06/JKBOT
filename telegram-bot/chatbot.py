@@ -22,8 +22,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TOKEN_TELEGRAM = os.environ.get("TOKEN_TELEGRAM")
-CLE_GROQ = os.environ.get("CLE_GROQ")
+TOKEN_TELEGRAM = os.environ.get("TOKEN_TELEGRA")
+CLE_GROQ = os.environ.get("CLE_GRO")
 ADMIN_CODE = os.environ.get("JKBOT_ADMIN_CODE", "JK2027ADMIN")
 DB_FILE = "historiques.json"
 
