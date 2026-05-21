@@ -480,6 +480,215 @@ Exemple : `BFR 3000000 2000000 1500000 500000`
 Ou posez directement votre question en langage naturel !
 """
 
+CALENDRIER_TEXT = """📅 *CALENDRIER FISCAL CAMEROUN 2026*
+
+*JANVIER*
+▸ 15/01 — TVA déclaration décembre N-1
+▸ 15/01 — RS (retenues à la source) décembre
+▸ 15/01 — Reversement IRPP salaires décembre
+
+*FÉVRIER*
+▸ 15/02 — TVA déclaration janvier
+▸ 15/02 — RS et IRPP salaires janvier
+
+*MARS* ⚠️ _Mois le plus chargé !_
+▸ 15/03 — TVA déclaration février
+▸ *15/03 — Déclaration DSF (IS/Résultat N-1)* 🔴
+▸ *15/03 — 1er acompte IS* 🔴
+▸ *15/03 — Déclaration annuelle IRPP*
+▸ 31/03 — Paiement Patente & Licence
+▸ 31/03 — Taxe foncière
+
+*AVRIL*
+▸ 15/04 — TVA déclaration mars
+
+*MAI*
+▸ 15/05 — TVA déclaration avril
+
+*JUIN*
+▸ 15/06 — TVA déclaration mai
+▸ *15/06 — 2ème acompte IS* 🔴
+
+*JUILLET*
+▸ 15/07 — TVA déclaration juin
+
+*AOÛT*
+▸ 15/08 — TVA déclaration juillet
+
+*SEPTEMBRE*
+▸ 15/09 — TVA déclaration août
+▸ *15/09 — 3ème acompte IS* 🔴
+
+*OCTOBRE*
+▸ 15/10 — TVA déclaration septembre
+
+*NOVEMBRE*
+▸ 15/11 — TVA déclaration octobre
+
+*DÉCEMBRE*
+▸ 15/12 — TVA déclaration novembre
+▸ 31/12 — Clôture exercice fiscal
+
+─────────────────────
+🔴 = Échéance critique
+⚠️ Pénalité de retard : 1,5%/mois (min 25 000 FCFA)
+📞 DGI Cameroun : impots.cm
+"""
+
+LF2025_TEXT = """📜 *LOI DE FINANCES 2025 — POINTS CLÉS*
+
+*🔵 IMPÔT SUR LES SOCIÉTÉS (IS)*
+▸ Taux IS maintenu à 30% (+10% CAC = 33%)
+▸ IMF : plafond relevé à 2 500 000 FCFA
+▸ Renforcement des obligations de documentation de prix de transfert pour groupes
+▸ Amortissements accélérés maintenus pour équipements industriels neufs
+
+*🟢 TVA*
+▸ Taux normal maintenu à 19,25%
+▸ Nouvelles exonérations : matériaux de construction locaux (< seuil fixé)
+▸ Facturation électronique obligatoire pour les grandes entreprises (CA > 3 Mds)
+▸ Remboursement crédit TVA exportateurs : délai réduit à 30 jours
+
+*🟡 IRPP & SALAIRES*
+▸ Barème progressif inchangé (5 tranches)
+▸ Abattement forfaitaire maintenu à 30%
+▸ Nouvelle exonération : primes de scolarité versées par l'employeur (< 100 000/an/enfant)
+
+*🟠 MESURES DOUANIÈRES*
+▸ Réduction droits d'entrée sur équipements agricoles
+▸ Taxe spéciale sur certains produits importés concurrençant la production locale
+
+*🔴 NOUVELLES OBLIGATIONS*
+▸ NIU obligatoire sur toutes les factures (déjà en vigueur, renforcé)
+▸ Déclaration des comptes bancaires étrangers pour résidents fiscaux
+▸ Obligation de télédéclaration pour entreprises du régime réel
+▸ Extension du contrôle fiscal aux plateformes numériques étrangères
+
+*🟣 CNPS*
+▸ Taux cotisations inchangés (employeur ~13%, salarié 2,8%)
+▸ Plafond mensuel AVID maintenu à 750 000 FCFA
+
+─────────────────────
+ℹ️ Consultez impots.cm pour le texte intégral
+"""
+
+CREATION_TEXT = """🏢 *GUIDE CRÉATION D'ENTREPRISE AU CAMEROUN*
+
+*📋 ÉTAPE 1 — Choisir sa forme juridique*
+┌─ *SA* (Société Anonyme) : capital min 10 000 000 FCFA, ≥ 3 actionnaires
+├─ *SARL* (Société à Resp. Limitée) : capital min 1 000 000 FCFA, 1-50 associés ← recommandée
+├─ *SAS* (Société par Actions Simplifiée) : flexible, capital libre, OHADA 2014
+├─ *SNC* (Société en Nom Collectif) : pas de capital minimum, responsabilité illimitée
+└─ *EI* (Entreprise Individuelle) : personne physique, simple, responsabilité illimitée
+
+*📋 ÉTAPE 2 — Enregistrement au Greffe du Tribunal de Commerce*
+▸ Dossier : statuts notariés, liste associés, acte de nomination gérant
+▸ Délai : 3 à 7 jours ouvrables
+▸ Coût : ~50 000 à 150 000 FCFA (droits d'enregistrement 1% capital)
+
+*📋 ÉTAPE 3 — Obtenir le NIU (Numéro d'Identification Unique)*
+▸ Auprès de la Direction des Impôts (DGI)
+▸ Documents : acte de création, pièce identité dirigeant, bail locaux
+▸ Délai : 24 à 72h
+▸ GRATUIT
+
+*📋 ÉTAPE 4 — Immatriculation RCCM (Registre Commerce)*
+▸ Centre de Formalités de Création d'Entreprises (CFCE)
+▸ Coût : ~30 000 FCFA
+▸ Délai : 24h (guichet unique)
+
+*📋 ÉTAPE 5 — Affiliation CNPS*
+▸ Dès le premier salarié
+▸ Documents : NIU, RCCM, contrats de travail
+▸ Obtenir numéro employeur CNPS
+
+*📋 ÉTAPE 6 — Ouverture compte bancaire professionnel*
+▸ BICEC, Afriland, SCB, UBA, Ecobank...
+▸ Présenter : statuts, RCCM, NIU, pièces dirigeants
+
+*📋 ÉTAPE 7 — Obligations post-création*
+▸ Tenir une comptabilité dès le 1er jour (SYSCOHADA)
+▸ Émettre des factures normalisées avec NIU
+▸ Déposer déclaration d'existence à la DGI (30 jours)
+▸ Payer la patente avant le 31 mars de l'année suivante
+▸ Première déclaration TVA le mois suivant si CA > 50M
+
+*💰 Coût total estimé création SARL :*
+▸ Notaire statuts : 150 000 – 300 000 FCFA
+▸ Greffe + RCCM  : 50 000 – 100 000 FCFA
+▸ Frais divers   : 30 000 – 50 000 FCFA
+▸ *TOTAL : ~230 000 – 450 000 FCFA*
+
+─────────────────────
+🏢 CFCE Yaoundé : Avenue Monseigneur Vogt
+🏢 CFCE Douala  : Bonanjo, face CCIMA
+"""
+
+PATENTE_GUIDE_TEXT = """📊 *GUIDE CALCUL DE LA PATENTE*
+
+La patente est due par toute personne physique ou morale exerçant une activité commerciale, industrielle ou libérale (Art. 170 CGI).
+
+*Formule :*
+Patente = Droit fixe + Droit proportionnel
+
+*Droit proportionnel :*
+= 16,5% × Valeur locative des locaux professionnels
+
+*Exemples de droits fixes par catégorie :*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Commerce général (gros)          : 120 000 FCFA
+Commerce détail                  :  30 000 FCFA
+Industrie manufacturière         : 150 000 FCFA
+Prestataire de services          :  50 000 FCFA
+Profession libérale (médecin...)  :  75 000 FCFA
+Transporteur (par véhicule)      :  25 000 FCFA
+Restaurant / Hôtel               :  60 000 FCFA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+*Exemple complet :*
+Commerce de gros, locaux de valeur locative annuelle 2 400 000 FCFA :
+▸ Droit fixe         : 120 000 FCFA
+▸ Droit proportionnel: 2 400 000 × 16,5% = 396 000 FCFA
+▸ *Total patente     : 516 000 FCFA*
+
+*Dates & pénalités :*
+▸ Paiement : avant le 31 mars de chaque année
+▸ Retard : pénalité 10% + intérêts 1,5%/mois
+
+*Exonérations :*
+▸ Agriculteurs exploitants
+▸ Artisans (sous conditions de revenu)
+▸ Nouvelle entreprise : exonérée la 1ère année d'activité
+
+Posez vos questions pour un calcul personnalisé !
+"""
+
+DSF_PROMPT = """Tu es JKBOT en mode *Assistant DSF Intelligent* 🧮.
+L'utilisateur va te décrire une opération comptable ou une situation d'entreprise en langage naturel.
+Tu dois générer les *écritures comptables SYSCOHADA* correspondantes avec :
+1. Le journal concerné (Achats, Ventes, Banque, OD...)
+2. Le(s) compte(s) débité(s) avec libellé exact SYSCOHADA
+3. Le(s) compte(s) crédité(s) avec libellé exact
+4. Les montants calculés si fournis
+5. Une explication pédagogique courte
+6. Le traitement fiscal si applicable (TVA, RS, IS...)
+
+Format de réponse OBLIGATOIRE :
+───────────────────────────
+Journal : [nom du journal]
+Date    : [date de l'opération]
+
+DÉBIT  | N° | Libellé SYSCOHADA         | Montant
+CRÉDIT | N° | Libellé SYSCOHADA         | Montant
+...
+───────────────────────────
+💡 Explication : [explication courte]
+🧾 Fiscal : [impact fiscal si applicable]
+
+Si une information manque pour compléter l'écriture, pose une question précise.
+Réponds toujours en français avec émojis.
+"""
+
 # ─────────────────────────────────────────────
 # CALCULS FISCAUX AUTOMATIQUES
 # ─────────────────────────────────────────────
@@ -602,26 +811,73 @@ def calculer_bfr(stocks: float, creances: float, fournisseurs: float, fiscal_soc
         f"{statut}"
     )
 
+def calculer_cnps(salaire_brut: float) -> str:
+    plafond_avid = 750_000
+    assiette_avid = min(salaire_brut, plafond_avid)
+    # Part salariale
+    sal_avid = assiette_avid * 0.028
+    total_sal = sal_avid
+    # Part patronale
+    pat_avid = assiette_avid * 0.042
+    pat_famille = salaire_brut * 0.07
+    pat_at = salaire_brut * 0.0175
+    total_pat = pat_avid + pat_famille + pat_at
+    net_a_payer = salaire_brut - total_sal
+    cout_total = salaire_brut + total_pat
+    return (
+        f"📊 *Calcul CNPS — Salaire {salaire_brut:,.0f} FCFA*\n\n"
+        f"*PART SALARIALE (déduite du salaire)*\n"
+        f"AVID 2,8% × {assiette_avid:,.0f} FCFA : {sal_avid:,.0f} FCFA\n"
+        f"─────────────────────\n"
+        f"*Total retenu sur salarié : {total_sal:,.0f} FCFA*\n"
+        f"*Net à payer au salarié   : {net_a_payer:,.0f} FCFA*\n\n"
+        f"*PART PATRONALE (charge de l'employeur)*\n"
+        f"AVID 4,2% × {assiette_avid:,.0f}  : {pat_avid:,.0f} FCFA\n"
+        f"Alloc. fam. 7% × {salaire_brut:,.0f} : {pat_famille:,.0f} FCFA\n"
+        f"AT/MP 1,75% × {salaire_brut:,.0f}   : {pat_at:,.0f} FCFA\n"
+        f"─────────────────────\n"
+        f"*Total charge patronale   : {total_pat:,.0f} FCFA*\n"
+        f"*Coût total employeur     : {cout_total:,.0f} FCFA*\n\n"
+        f"ℹ️ Plafond AVID : 750 000 FCFA/mois\n"
+        f"📅 Reversement CNPS : avant le 15 du mois suivant"
+    )
+
+def calculer_tva_simple(montant_ht: float) -> str:
+    tva = montant_ht * 0.1925
+    ttc = montant_ht + tva
+    return (
+        f"📊 *Calcul TVA rapide*\n\n"
+        f"Montant HT       : {montant_ht:,.0f} FCFA\n"
+        f"TVA 19,25%       : {tva:,.0f} FCFA\n"
+        f"─────────────────────\n"
+        f"*Montant TTC     : {ttc:,.0f} FCFA*\n\n"
+        f"ℹ️ Pour déduire la TVA d'un TTC :\n"
+        f"TVA = TTC × 19,25/119,25 = {ttc * 0.1925 / 1.1925:,.0f} FCFA"
+    )
+
 def traiter_calcul(texte: str) -> str | None:
-    t = texte.strip().upper()
     parts = texte.strip().split()
     try:
         cmd = parts[0].upper()
         if cmd == "IS" and len(parts) == 2:
-            return calculer_is(float(parts[1].replace(" ", "").replace(",", "")))
+            return calculer_is(float(parts[1].replace(",", "")))
         if cmd == "IMF" and len(parts) == 2:
-            return calculer_imf(float(parts[1].replace(" ", "").replace(",", "")))
+            return calculer_imf(float(parts[1].replace(",", "")))
+        if cmd == "TVA" and len(parts) == 2:
+            return calculer_tva_simple(float(parts[1].replace(",", "")))
         if cmd == "TVA" and len(parts) == 3:
             return calculer_tva(float(parts[1].replace(",", "")), float(parts[2].replace(",", "")))
         if cmd == "IRPP" and len(parts) == 2:
             return calculer_irpp(float(parts[1].replace(",", "")))
+        if cmd == "CNPS" and len(parts) == 2:
+            return calculer_cnps(float(parts[1].replace(",", "")))
         if cmd == "RS" and len(parts) == 2:
             return calculer_rs(float(parts[1].replace(",", "")))
         if cmd == "AMORT" and len(parts) == 3:
             return calculer_amort(float(parts[1].replace(",", "")), int(parts[2]))
         if cmd == "BFR" and len(parts) == 5:
-            return calculer_bfr(float(parts[1].replace(",","")), float(parts[2].replace(",","")),
-                                float(parts[3].replace(",","")), float(parts[4].replace(",","")))
+            return calculer_bfr(float(parts[1].replace(",", "")), float(parts[2].replace(",", "")),
+                                float(parts[3].replace(",", "")), float(parts[4].replace(",", "")))
     except (ValueError, IndexError):
         pass
     return None
@@ -900,10 +1156,12 @@ BANQUE_QUESTIONS = [
 ]
 
 # ─────────────────────────────────────────────
-# ÉTAT DES QUIZ PAR UTILISATEUR
+# ÉTAT GLOBAL PAR UTILISATEUR
 # ─────────────────────────────────────────────
 quiz_sessions: dict = {}
 scores: dict = {}
+dsf_sessions: set = set()
+lang_prefs: dict = {}
 
 def get_score(user_id: str) -> dict:
     if user_id not in scores:
@@ -957,15 +1215,18 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"👋 Bonjour *{prenom}* !\n\n"
         f"Je suis *JKBOT* 🇨🇲 — votre assistant expert en :\n"
-        f"🧾 Fiscalité camerounaise (CGI 2026)\n"
-        f"📊 Comptabilité OHADA / SYSCOHADA\n"
-        f"📑 États financiers (Bilan, CR, TFT)\n"
-        f"🧮 Calculs fiscaux automatiques\n\n"
-        f"Posez votre question ou utilisez :\n"
+        f"🧾 Fiscalité CGI 2026 • 📊 Comptabilité OHADA\n"
+        f"🧮 Calculs automatiques • 📅 Calendrier fiscal\n"
+        f"🏢 Création entreprise • 📄 Générateur de documents\n"
+        f"🤖 Écritures SYSCOHADA intelligentes (DSF)\n\n"
+        f"*Commandes rapides :*\n"
+        f"• /tva 500000 • /is 2000000 • /irpp 350000 • /cnps 400000\n\n"
+        f"*Navigation :*\n"
         f"• /aide — Menu complet\n"
-        f"• /cours — Cours de comptabilité\n"
-        f"• /etats — États financiers\n"
-        f"• /calculer — Calculatrice fiscale",
+        f"• /dsf — Assistant écritures SYSCOHADA\n"
+        f"• /calendrier — Échéances fiscales\n"
+        f"• /quiz — S'entraîner\n"
+        f"• /lang — 🇫🇷/🇬🇧 Changer la langue",
         parse_mode="Markdown"
     )
 
@@ -986,6 +1247,164 @@ async def cmd_etats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_calculer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(CALCULER_TEXT, parse_mode="Markdown")
+
+# ── Commandes rapides avec argument inline ──
+async def cmd_tva(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.args:
+        try:
+            montant = float(context.args[0].replace(",", ""))
+            await update.message.reply_text(calculer_tva_simple(montant), parse_mode="Markdown")
+            return
+        except ValueError:
+            pass
+    await update.message.reply_text("Usage : `/tva 500000`\nExemple : `/tva 1200000`", parse_mode="Markdown")
+
+async def cmd_is(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.args:
+        try:
+            montant = float(context.args[0].replace(",", ""))
+            await update.message.reply_text(calculer_is(montant), parse_mode="Markdown")
+            return
+        except ValueError:
+            pass
+    await update.message.reply_text("Usage : `/is 5000000`\nExemple : `/is 12000000`", parse_mode="Markdown")
+
+async def cmd_irpp(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.args:
+        try:
+            montant = float(context.args[0].replace(",", ""))
+            await update.message.reply_text(calculer_irpp(montant), parse_mode="Markdown")
+            return
+        except ValueError:
+            pass
+    await update.message.reply_text("Usage : `/irpp 350000`\nExemple : `/irpp 600000`", parse_mode="Markdown")
+
+async def cmd_cnps(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.args:
+        try:
+            montant = float(context.args[0].replace(",", ""))
+            await update.message.reply_text(calculer_cnps(montant), parse_mode="Markdown")
+            return
+        except ValueError:
+            pass
+    await update.message.reply_text("Usage : `/cnps 350000`\nExemple : `/cnps 500000`", parse_mode="Markdown")
+
+async def cmd_patente(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(PATENTE_GUIDE_TEXT, parse_mode="Markdown")
+
+async def cmd_calendrier(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(CALENDRIER_TEXT, parse_mode="Markdown")
+
+async def cmd_lf2025(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(LF2025_TEXT, parse_mode="Markdown")
+
+async def cmd_creation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(CREATION_TEXT, parse_mode="Markdown")
+
+# ── Générateur de documents (IA) ──
+async def cmd_facture(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_chat_action("typing")
+    prompt = (
+        "Génère un modèle de facture camerounaise complète et conforme (TVA 19,25%, NIU obligatoire). "
+        "Inclus : numéro de facture, date, émetteur (nom, adresse, NIU, RCCM), client, désignation, "
+        "quantité, prix unitaire HT, total HT, TVA 19,25%, total TTC. "
+        "Formate-le clairement avec des séparateurs. Ajoute une mention légale en bas."
+    )
+    try:
+        client = Groq(api_key=CLE_GROQ)
+        r = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": SYSTEM_PROMPT},
+                      {"role": "user", "content": prompt}],
+            max_tokens=1200, temperature=0.3
+        )
+        await update.message.reply_text(r.choices[0].message.content)
+    except Exception as e:
+        print(f"❌ Erreur facture: {e}")
+        await update.message.reply_text("❌ Erreur technique. Réessayez.")
+
+async def cmd_fiche_paie(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_chat_action("typing")
+    prompt = (
+        "Génère un modèle de fiche de paie camerounaise simplifiée et conforme au droit social OHADA. "
+        "Inclus : en-tête employeur (raison sociale, NIU, CNPS numéro), en-tête salarié (nom, poste, date d'embauche), "
+        "éléments du salaire brut (salaire de base, primes, heures supplémentaires), "
+        "déductions salariales (CNPS 2,8%, IRPP calculé sur barème progressif), "
+        "charges patronales (CNPS patronal ~13%), net à payer, mention de bulletin. "
+        "Utilise un exemple avec salaire de base de 400 000 FCFA. Formate proprement avec des colonnes."
+    )
+    try:
+        client = Groq(api_key=CLE_GROQ)
+        r = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": SYSTEM_PROMPT},
+                      {"role": "user", "content": prompt}],
+            max_tokens=1200, temperature=0.3
+        )
+        await update.message.reply_text(r.choices[0].message.content)
+    except Exception as e:
+        print(f"❌ Erreur fiche_paie: {e}")
+        await update.message.reply_text("❌ Erreur technique. Réessayez.")
+
+# ── Assistant DSF Intelligent ──
+async def cmd_dsf(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    dsf_sessions.add(user_id)
+    await update.message.reply_text(
+        "🧮 *Mode DSF activé — Assistant Écritures SYSCOHADA*\n\n"
+        "Décrivez votre opération en langage naturel, je génère les écritures comptables.\n\n"
+        "*Exemples :*\n"
+        "▸ \"Achat de marchandises 500 000 FCFA TTC à crédit\"\n"
+        "▸ \"Vente de produits 1 200 000 FCFA TTC, payée par virement\"\n"
+        "▸ \"Règlement d'un emprunt : échéance 150 000 dont 40 000 d'intérêts\"\n"
+        "▸ \"Dotation amortissement matériel 8 000 000 FCFA sur 4 ans, 2ème année\"\n"
+        "▸ \"Paiement salaires : brut 600 000, CNPS salarié, IRPP\"\n\n"
+        "Tapez /stop pour quitter ce mode.",
+        parse_mode="Markdown"
+    )
+
+async def cmd_stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    dsf_sessions.discard(user_id)
+    await update.message.reply_text("✅ Mode DSF désactivé. Retour au mode normal.")
+
+# ── Langue ──
+async def cmd_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    current = lang_prefs.get(user_id, "fr")
+    if current == "fr":
+        lang_prefs[user_id] = "en"
+        await update.message.reply_text(
+            "🇬🇧 *Language switched to English!*\n\n"
+            "JKBOT will now respond in English.\n"
+            "Type /lang again to switch back to French 🇫🇷",
+            parse_mode="Markdown"
+        )
+    else:
+        lang_prefs[user_id] = "fr"
+        await update.message.reply_text(
+            "🇫🇷 *Langue réglée sur le français !*\n\n"
+            "JKBOT répondra maintenant en français.\n"
+            "Tapez /lang pour repasser en anglais 🇬🇧",
+            parse_mode="Markdown"
+        )
+
+# ── Quiz par catégorie ──
+async def cmd_quiz_fiscal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    fiscales = [q for q in BANQUE_QUESTIONS if "Fiscalité" in q["categorie"]]
+    score = get_score(user_id)
+    q = random.choice(fiscales)
+    quiz_sessions[user_id] = q
+    await update.message.reply_text(formater_question(q, len(fiscales), score), parse_mode="Markdown")
+
+async def cmd_quiz_compta(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    compta = [q for q in BANQUE_QUESTIONS if "Comptabilité" in q["categorie"]]
+    score = get_score(user_id)
+    q = random.choice(compta)
+    quiz_sessions[user_id] = q
+    await update.message.reply_text(formater_question(q, len(compta), score), parse_mode="Markdown")
 
 async def cmd_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
@@ -1059,15 +1478,40 @@ async def repondre(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(resultat_calcul, parse_mode="Markdown")
         return
 
-    # ── Réponse IA ──
+    # ── Mode DSF : écritures SYSCOHADA ──
+    if user_id in dsf_sessions:
+        await update.message.reply_chat_action("typing")
+        try:
+            client = Groq(api_key=CLE_GROQ)
+            reponse = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "system", "content": DSF_PROMPT},
+                          {"role": "user", "content": texte_recu}],
+                max_tokens=1500, temperature=0.3
+            )
+            texte = reponse.choices[0].message.content
+            if len(texte) > 4096:
+                for i in range(0, len(texte), 4096):
+                    await update.message.reply_text(texte[i:i+4096])
+            else:
+                await update.message.reply_text(texte)
+        except Exception as e:
+            print(f"❌ Erreur DSF: {e}")
+            await update.message.reply_text("❌ Erreur technique. Réessayez.")
+        return
+
+    # ── Réponse IA (normale) ──
     await update.message.reply_chat_action("typing")
     try:
         client = Groq(api_key=CLE_GROQ)
         historiques[user_id].append({"role": "user", "content": texte_recu})
+        langue = lang_prefs.get(user_id, "fr")
+        lang_instruction = "\nPlease respond in English." if langue == "en" else ""
+        system = SYSTEM_PROMPT + lang_instruction
 
         reponse = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + historiques[user_id],
+            messages=[{"role": "system", "content": system}] + historiques[user_id],
             max_tokens=1500,
             temperature=0.5
         )
@@ -1108,8 +1552,29 @@ def main():
     app.add_handler(CommandHandler("cours", cmd_cours))
     app.add_handler(CommandHandler("etats", cmd_etats))
     app.add_handler(CommandHandler("calculer", cmd_calculer))
+    # Calculs rapides
+    app.add_handler(CommandHandler("tva", cmd_tva))
+    app.add_handler(CommandHandler("is", cmd_is))
+    app.add_handler(CommandHandler("irpp", cmd_irpp))
+    app.add_handler(CommandHandler("cnps", cmd_cnps))
+    app.add_handler(CommandHandler("patente", cmd_patente))
+    # Référence fiscale
+    app.add_handler(CommandHandler("calendrier", cmd_calendrier))
+    app.add_handler(CommandHandler("lf2025", cmd_lf2025))
+    app.add_handler(CommandHandler("creation", cmd_creation))
+    # Générateur documents
+    app.add_handler(CommandHandler("facture", cmd_facture))
+    app.add_handler(CommandHandler("fiche_paie", cmd_fiche_paie))
+    # DSF & langue
+    app.add_handler(CommandHandler("dsf", cmd_dsf))
+    app.add_handler(CommandHandler("stop", cmd_stop))
+    app.add_handler(CommandHandler("lang", cmd_lang))
+    # Quiz
     app.add_handler(CommandHandler("quiz", cmd_quiz))
+    app.add_handler(CommandHandler("quiz_fiscal", cmd_quiz_fiscal))
+    app.add_handler(CommandHandler("quiz_compta", cmd_quiz_compta))
     app.add_handler(CommandHandler("score", cmd_score))
+    # Reset DSF aussi via /reset
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, repondre))
 
     print("✅ JKBOT prêt. Connexion à Telegram...")
