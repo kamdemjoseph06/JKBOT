@@ -1,6 +1,9 @@
 import logging
 import json
 import os
+import logging
+import json
+import os
 import sys
 import random
 import base64
@@ -583,7 +586,7 @@ def traiter_calcul(texte: str) -> str | None:
     return None
 
 # ─────────────────────────────────────────────
-# BANQUE DE QUESTIONS QUIZ (conservée intacte)
+# BANQUE DE QUESTIONS QUIZ
 # ─────────────────────────────────────────────
 BANQUE_QUESTIONS = [
     {"categorie": "🧾 Fiscalité", "niveau": "⭐ Débutant",
@@ -804,10 +807,11 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Je suis *JKBOT* 🇨🇲 — Expert en :\n"
         f"🧾 Fiscalité CGI 2026 • 📊 Comptabilité OHADA\n"
         f"🧮 Calculs automatiques • 📅 Calendrier fiscal\n"
-        f"📎 *Analyse de fichiers PDF et images*\n\n"
+        f"📎 *Analyse de fichiers PDF et images*\n"
+        f"🎙️ *Messages vocaux acceptés !*\n\n"
         f"*Calculs rapides :* /tva /is /irpp /cnps\n"
         f"*Navigation :* /aide /dsf /quiz /calendrier\n"
-        f"*Nouveauté :* Envoyez un PDF ou une image, je l'analyse !",
+        f"*Nouveauté :* Envoyez un PDF, une image ou un vocal, je l'analyse !",
         parse_mode="Markdown"
     )
 
@@ -1167,7 +1171,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         caption = update.message.caption or "Analyse cette image. S'il s'agit d'une facture, d'un reçu ou d'un document comptable, identifie tous les éléments importants."
         user_id = str(update.effective_user.id)
         langue = lang_prefs.get(user_id, "fr")
-        # Groq supporte les images via llama-3.2-11b-vision-preview
         client = Groq(api_key=CLE_GROQ)
         reponse = client.chat.completions.create(
             model="meta-llama/llama-4-scout-17b-16e-instruct",
@@ -1193,30 +1196,80 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "💡 Astuce : Envoyez un PDF pour une meilleure analyse."
         )
 
-
-
 # ─────────────────────────────────────────────
-# HANDLER VOICES
+# HANDLER VOICE  ✅ CORRIGÉ
 # ─────────────────────────────────────────────
-
-
-async def handle_voice(update, context):
+async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Transcrit le message vocal via Whisper puis génère une réponse IA."""
     await update.message.reply_chat_action("typing")
-    fichier = await context.bot.get_file(
-        update.message.voice.file_id)
-    chemin = f"/tmp/voice_{update.message.voice.file_id}.ogg"
-    await fichier.download_to_drive(chemin)
-    
-    client = Groq(api_key=CLE_GROQ)
-    with open(chemin, "rb") as f:
-        transcription = client.audio.transcriptions.create(
-            model="whisper-large-v3",
-            file=f, language="fr"
-        )
-    os.remove(chemin)
-    update.message.text = transcription.text
-    await repondre(update, context)
+    try:
+        # 1. Téléchargement du fichier audio
+        fichier = await context.bot.get_file(update.message.voice.file_id)
+        chemin = f"/tmp/voice_{update.message.voice.file_id}.ogg"
+        await fichier.download_to_drive(chemin)
 
+        # 2. Transcription via Whisper (Groq)
+        client_groq = Groq(api_key=CLE_GROQ)
+        with open(chemin, "rb") as f:
+            transcription = client_groq.audio.transcriptions.create(
+                model="whisper-large-v3",
+                file=f,
+                language="fr"
+            )
+        os.remove(chemin)
+
+        texte_transcrit = transcription.text.strip()
+        if not texte_transcrit:
+            await update.message.reply_text("❌ Audio non reconnu. Parlez plus clairement et réessayez.")
+            return
+
+        # 3. Confirmer la transcription à l'utilisateur
+        await update.message.reply_text(
+            f"🎙️ _J'ai entendu :_ {texte_transcrit}",
+            parse_mode="Markdown"
+        )
+
+        # 4. Vérifier si c'est une commande de calcul rapide
+        resultat_calcul = traiter_calcul(texte_transcrit)
+        if resultat_calcul:
+            await update.message.reply_text(resultat_calcul, parse_mode="Markdown")
+            return
+
+        # 5. Générer la réponse IA (même logique que repondre())
+        user_id = str(update.effective_user.id)
+        if user_id not in historiques:
+            historiques[user_id] = []
+
+        historiques[user_id].append({"role": "user", "content": texte_transcrit})
+        langue = lang_prefs.get(user_id, "fr")
+        contexte_enrichi = enrichir_contexte(texte_transcrit)
+        system = get_system_prompt_dynamique(langue, contexte_enrichi)
+
+        await update.message.reply_chat_action("typing")
+        reponse = client_groq.chat.completions.create(
+            model=MODELE_GROQ,
+            messages=[{"role": "system", "content": system}] + historiques[user_id],
+            max_tokens=1500,
+            temperature=0.5
+        )
+        texte_reponse = reponse.choices[0].message.content
+
+        # 6. Sauvegarder dans l'historique
+        historiques[user_id].append({"role": "assistant", "content": texte_reponse})
+        if len(historiques[user_id]) > 20:
+            historiques[user_id] = historiques[user_id][-20:]
+        sauvegarder_historiques(historiques)
+
+        # 7. Envoyer la réponse (avec pagination si nécessaire)
+        if len(texte_reponse) > 4096:
+            for i in range(0, len(texte_reponse), 4096):
+                await update.message.reply_text(texte_reponse[i:i+4096])
+        else:
+            await update.message.reply_text(texte_reponse)
+
+    except Exception as e:
+        print(f"❌ Erreur voix: {e}")
+        await update.message.reply_text("❌ Erreur lors du traitement du message vocal. Réessayez.")
 
 # ─────────────────────────────────────────────
 # HANDLER MESSAGES TEXTE
@@ -1283,11 +1336,8 @@ async def repondre(update: Update, context: ContextTypes.DEFAULT_TYPE):
         client = Groq(api_key=CLE_GROQ)
         historiques[user_id].append({"role": "user", "content": texte_recu})
         langue = lang_prefs.get(user_id, "fr")
-
-        # Enrichissement du contexte (CGI local + web si pertinent)
         contexte_enrichi = enrichir_contexte(texte_recu)
         system = get_system_prompt_dynamique(langue, contexte_enrichi)
-
         reponse = client.chat.completions.create(
             model=MODELE_GROQ,
             messages=[{"role": "system", "content": system}] + historiques[user_id],
@@ -1318,10 +1368,10 @@ def main():
         print("❌ CLE_GRO manquante")
         sys.exit(1)
 
-    print("🤖 Initialisation JKBOT v2.0 (CGI 2026 + SYSCOHADA + PDF + Images)...")
+    print("🤖 Initialisation JKBOT v2.1 (CGI 2026 + SYSCOHADA + PDF + Images + Voix)...")
     app = Application.builder().token(TOKEN_TELEGRAM).build()
 
-    # Commandes
+    # ── Commandes ──
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("reset", cmd_reset))
     app.add_handler(CommandHandler("aide", cmd_aide))
@@ -1352,16 +1402,15 @@ def main():
     app.add_handler(CommandHandler("historique_cgi", cmd_historique_cgi))
     app.add_handler(CommandHandler("supprimer_cgi", cmd_supprimer_cgi))
 
-    # Fichiers
+    # ── Fichiers & médias (TOUS avant run_polling) ──
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(MessageHandler(filters.VOICE, handle_voice))   # ✅ ICI, avant run_polling
 
-    # Messages texte
+    # ── Messages texte ──
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, repondre))
 
-
-
-    # Job rappels mensuels
+    # ── Job rappels mensuels ──
     job_queue = app.job_queue
     if job_queue:
         import pytz
@@ -1376,10 +1425,9 @@ def main():
     else:
         print("⚠️ JobQueue non disponible")
 
-    print("✅ JKBOT v2.0 prêt. Connexion Telegram...")
-    app.add_handler(MessageHandler(
-    filters.VOICE, handle_voice))
-    app.run_polling()
+    print("✅ JKBOT v2.1 prêt. Connexion Telegram...")
+    app.run_polling()   # ✅ Toujours en dernier
+
 
 if __name__ == "__main__":
     main()
