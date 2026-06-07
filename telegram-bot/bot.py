@@ -1193,6 +1193,31 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "💡 Astuce : Envoyez un PDF pour une meilleure analyse."
         )
 
+
+
+# ─────────────────────────────────────────────
+# HANDLER VOICES
+# ─────────────────────────────────────────────
+
+
+async def handle_voice(update, context):
+    await update.message.reply_chat_action("typing")
+    fichier = await context.bot.get_file(
+        update.message.voice.file_id)
+    chemin = f"/tmp/voice_{update.message.voice.file_id}.ogg"
+    await fichier.download_to_drive(chemin)
+    
+    client = Groq(api_key=CLE_GROQ)
+    with open(chemin, "rb") as f:
+        transcription = client.audio.transcriptions.create(
+            model="whisper-large-v3",
+            file=f, language="fr"
+        )
+    os.remove(chemin)
+    update.message.text = transcription.text
+    await repondre(update, context)
+
+
 # ─────────────────────────────────────────────
 # HANDLER MESSAGES TEXTE
 # ─────────────────────────────────────────────
