@@ -98,7 +98,7 @@ def extraire_texte_pdf(chemin: str) -> str:
         for page in doc:
             texte += page.get_text()
         doc.close()
-        return texte[:15000]
+        return texte[:6000]
     except Exception as e:
         return f"Impossible de lire le PDF : {e}"
 
@@ -120,7 +120,6 @@ SYSTEM_PROMPT = """Tu es JKBOT 🇨🇲, expert en fiscalité camerounaise ET en
 Réponds toujours en français, de façon claire, précise et pédagogique, avec des émojis pertinents.
 Cite les articles du CGI ou du référentiel SYSCOHADA quand c'est possible.
 Si une question est hors de tes domaines, redirige poliment.
-Utilise TOUJOURS le Franc CFA (FCFA) comme devise. N'utilise JAMAIS les euros (€), dollars ($) ou toute autre devise étrangère. Tous les montants sont en FCFA.
 
 ╔══════════════════════════════════════════╗
 ║  CODE GÉNÉRAL DES IMPÔTS — CGI 2026      ║
@@ -492,7 +491,7 @@ def calculer_amort(valeur: float, duree: int) -> str:
     taux = 1 / duree
     annuite = valeur * taux
     lignes = [
-        f"📊 *Amortissement linéaire — {valeur:,.0f} FCFA sur {duree} ans*\n",
+        f"📊 Amortissement linéaire — {valeur:,.0f} FCFA sur {duree} ans\n",
         f"Taux : {taux*100:.1f}% | Annuité : {annuite:,.0f} FCFA\n",
         f"{'Année':<8} {'Amort.':<16} {'Cumulé':<16} {'VNC'}",
         "─" * 50,
@@ -584,7 +583,7 @@ def traiter_calcul(texte: str) -> str | None:
     return None
 
 # ─────────────────────────────────────────────
-# BANQUE DE QUESTIONS QUIZ
+# BANQUE DE QUESTIONS QUIZ (conservée intacte)
 # ─────────────────────────────────────────────
 BANQUE_QUESTIONS = [
     {"categorie": "🧾 Fiscalité", "niveau": "⭐ Débutant",
@@ -795,83 +794,89 @@ async def job_rappel_mensuel(context) -> None:
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+async def safe_reply(update: Update, texte: str, parse_mode: str = "Markdown") -> None:
+    """Envoie un message avec parse_mode, retombe sur texte brut en cas d'erreur Markdown."""
+    try:
+        await update.message.reply_text(texte, parse_mode=parse_mode)
+    except Exception:
+        # Markdown invalide → envoi sans formatage
+        await update.message.reply_text(texte)
+
 # ─────────────────────────────────────────────
 # COMMANDES
 # ─────────────────────────────────────────────
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prenom = update.effective_user.first_name
-    await update.message.reply_text(
+    await safe_reply(update,
         f"👋 Bonjour *{prenom}* !\n\n"
         f"Je suis *JKBOT* 🇨🇲 — Expert en :\n"
         f"🧾 Fiscalité CGI 2026 • 📊 Comptabilité OHADA\n"
         f"🧮 Calculs automatiques • 📅 Calendrier fiscal\n"
-        f"📎 *Analyse de fichiers PDF et images*\n"
-        f"🎙️ *Messages vocaux acceptés !*\n\n"
+        f"📎 *Analyse de fichiers PDF et images*\n\n"
         f"*Calculs rapides :* /tva /is /irpp /cnps\n"
         f"*Navigation :* /aide /dsf /quiz /calendrier\n"
-        f"*Nouveauté :* Envoyez un PDF, une image ou un vocal, je l'analyse !",
-        parse_mode="Markdown"
+        f"*Nouveauté :* Envoyez un PDF ou une image, je l'analyse !"
     )
 
 async def cmd_aide(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(AIDE_TEXT, parse_mode="Markdown")
+    await safe_reply(update, AIDE_TEXT)
 
 async def cmd_cours(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(COURS_TEXT, parse_mode="Markdown")
+    await safe_reply(update, COURS_TEXT)
 
 async def cmd_etats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(ETATS_TEXT, parse_mode="Markdown")
+    await safe_reply(update, ETATS_TEXT)
 
 async def cmd_calculer(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(CALCULER_TEXT, parse_mode="Markdown")
+    await safe_reply(update, CALCULER_TEXT)
 
 async def cmd_tva(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
         try:
-            await update.message.reply_text(calculer_tva_simple(float(context.args[0].replace(",", ""))), parse_mode="Markdown")
+            await safe_reply(update, calculer_tva_simple(float(context.args[0].replace(",", ""))))
             return
         except ValueError:
             pass
-    await update.message.reply_text("Usage : `/tva 500000`", parse_mode="Markdown")
+    await safe_reply(update, "Usage : `/tva 500000`")
 
 async def cmd_is(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
         try:
-            await update.message.reply_text(calculer_is(float(context.args[0].replace(",", ""))), parse_mode="Markdown")
+            await safe_reply(update, calculer_is(float(context.args[0].replace(",", ""))))
             return
         except ValueError:
             pass
-    await update.message.reply_text("Usage : `/is 5000000`", parse_mode="Markdown")
+    await safe_reply(update, "Usage : `/is 5000000`")
 
 async def cmd_irpp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
         try:
-            await update.message.reply_text(calculer_irpp(float(context.args[0].replace(",", ""))), parse_mode="Markdown")
+            await safe_reply(update, calculer_irpp(float(context.args[0].replace(",", ""))))
             return
         except ValueError:
             pass
-    await update.message.reply_text("Usage : `/irpp 350000`", parse_mode="Markdown")
+    await safe_reply(update, "Usage : `/irpp 350000`")
 
 async def cmd_cnps(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
         try:
-            await update.message.reply_text(calculer_cnps(float(context.args[0].replace(",", ""))), parse_mode="Markdown")
+            await safe_reply(update, calculer_cnps(float(context.args[0].replace(",", ""))))
             return
         except ValueError:
             pass
-    await update.message.reply_text("Usage : `/cnps 350000`", parse_mode="Markdown")
+    await safe_reply(update, "Usage : `/cnps 350000`")
 
 async def cmd_patente(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(PATENTE_GUIDE_TEXT, parse_mode="Markdown")
+    await safe_reply(update, PATENTE_GUIDE_TEXT)
 
 async def cmd_calendrier(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(CALENDRIER_TEXT, parse_mode="Markdown")
+    await safe_reply(update, CALENDRIER_TEXT)
 
 async def cmd_lf2025(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(LF2025_TEXT, parse_mode="Markdown")
+    await safe_reply(update, LF2025_TEXT)
 
 async def cmd_creation(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(CREATION_TEXT, parse_mode="Markdown")
+    await safe_reply(update, CREATION_TEXT)
 
 async def cmd_facture(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action("typing")
@@ -921,8 +926,7 @@ async def cmd_dsf(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "▸ \"Vente 1 200 000 FCFA TTC par virement\"\n"
         "▸ \"Paiement salaires : brut 600 000, CNPS, IRPP\"\n"
         "▸ \"Dotation amortissement matériel 8M sur 4 ans, 2ème année\"\n\n"
-        "Tapez /stop pour quitter.",
-        parse_mode="Markdown"
+        "Tapez /stop pour quitter."
     )
 
 async def cmd_stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -935,29 +939,29 @@ async def cmd_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     current = lang_prefs.get(user_id, "fr")
     if current == "fr":
         lang_prefs[user_id] = "en"
-        await update.message.reply_text("🇬🇧 *Language switched to English!*\nType /lang to switch back.", parse_mode="Markdown")
+        await safe_reply(update, "🇬🇧 *Language switched to English!*\nType /lang to switch back.")
     else:
         lang_prefs[user_id] = "fr"
-        await update.message.reply_text("🇫🇷 *Langue réglée sur le français !*\nTapez /lang pour repasser en anglais.", parse_mode="Markdown")
+        await safe_reply(update, "🇫🇷 *Langue réglée sur le français !*\nTapez /lang pour repasser en anglais.")
 
 async def cmd_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     q = nouvelle_question(user_id)
-    await update.message.reply_text(formater_question(q, get_score(user_id)), parse_mode="Markdown")
+    await safe_reply(update, formater_question(q, get_score(user_id)))
 
 async def cmd_quiz_fiscal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     fiscales = [q for q in BANQUE_QUESTIONS if "Fiscalité" in q["categorie"]]
     q = random.choice(fiscales)
     quiz_sessions[user_id] = q
-    await update.message.reply_text(formater_question(q, get_score(user_id)), parse_mode="Markdown")
+    await safe_reply(update, formater_question(q, get_score(user_id)))
 
 async def cmd_quiz_compta(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     compta = [q for q in BANQUE_QUESTIONS if "Comptabilité" in q["categorie"]]
     q = random.choice(compta)
     quiz_sessions[user_id] = q
-    await update.message.reply_text(formater_question(q, get_score(user_id)), parse_mode="Markdown")
+    await safe_reply(update, formater_question(q, get_score(user_id)))
 
 async def cmd_score(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
@@ -969,11 +973,10 @@ async def cmd_score(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     pct = round(correct / total * 100)
     mention = "🏆 Excellent !" if pct >= 80 else ("👍 Bien !" if pct >= 60 else ("📖 Passable." if pct >= 40 else "💪 Courage !"))
-    await update.message.reply_text(
+    await safe_reply(update,
         f"📊 *Votre score JKBOT*\n\n"
         f"✅ Bonnes : {correct} | ❌ Mauvaises : {total - correct}\n"
-        f"🎯 Taux : *{pct}%* — {mention}",
-        parse_mode="Markdown"
+        f"🎯 Taux : *{pct}%* — {mention}"
     )
 
 async def cmd_rappel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -987,9 +990,8 @@ async def cmd_rappel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sauvegarder_rappel_subscribers(rappel_subscribers)
         maintenant = datetime.now()
         apercu = get_rappel_mensuel(maintenant.month, maintenant.year)
-        await update.message.reply_text(
-            f"🔔 *Rappels mensuels activés !*\n\n{apercu}",
-            parse_mode="Markdown"
+        await safe_reply(update,
+            f"🔔 *Rappels mensuels activés !*\n\n{apercu}"
         )
 
 async def cmd_nouveautes(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -998,18 +1000,19 @@ async def cmd_nouveautes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("📋 Aucune mise à jour enregistrée.")
         return
     tri = sorted(updates, key=lambda x: (x["annee"], x.get("date_ajout", "")), reverse=True)
-    texte = "📢 *Nouveautés fiscales & comptables*\n\n"
+    texte = "📢 Nouveautés fiscales & comptables\n\n"
     for u in tri[:10]:
-        texte += f"▸ *{u['titre']}* ({u['annee']})\n_{u['contenu'][:200]}{'...' if len(u['contenu'])>200 else ''}_\n\n"
+        extrait = u['contenu'][:200] + ('...' if len(u['contenu']) > 200 else '')
+        texte += f"▸ {u['titre']} ({u['annee']})\n{extrait}\n\n"
     if len(texte) > 4096:
         for i in range(0, len(texte), 4096):
-            await update.message.reply_text(texte[i:i+4096], parse_mode="Markdown")
+            await update.message.reply_text(texte[i:i+4096])
     else:
-        await update.message.reply_text(texte, parse_mode="Markdown")
+        await update.message.reply_text(texte)
 
 async def cmd_lf(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("Usage : `/lf 2026`", parse_mode="Markdown")
+        await safe_reply(update, "Usage : `/lf 2026`")
         return
     try:
         annee = int(context.args[0])
@@ -1017,23 +1020,22 @@ async def cmd_lf(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Année invalide.")
         return
     if annee == 2025:
-        await update.message.reply_text(LF2025_TEXT, parse_mode="Markdown")
+        await safe_reply(update, LF2025_TEXT)
         return
     updates = [u for u in charger_cgi_updates() if u["annee"] == annee]
     if not updates:
         await update.message.reply_text(f"📋 Aucune disposition enregistrée pour {annee}.")
         return
-    texte = f"📜 *Loi de Finances {annee}*\n\n"
+    texte = f"📜 Loi de Finances {annee}\n\n"
     for e in updates:
-        texte += f"▸ *{e['titre']}*\n{e['contenu']}\n\n"
-    await update.message.reply_text(texte[:4096], parse_mode="Markdown")
+        texte += f"▸ {e['titre']}\n{e['contenu']}\n\n"
+    await update.message.reply_text(texte[:4096])
 
 async def cmd_maj_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args or len(context.args) < 3:
-        await update.message.reply_text(
+        await safe_reply(update,
             "Usage : `/maj_cgi CODE ANNEE TITRE | CONTENU`\n"
-            "Exemple : `/maj_cgi JK2027ADMIN 2027 Nouveau taux IS | Le taux passe à 28%.`",
-            parse_mode="Markdown"
+            "Exemple : `/maj_cgi JK2027ADMIN 2027 Nouveau taux IS | Le taux passe à 28%.`"
         )
         return
     if context.args[0] != ADMIN_CODE:
@@ -1046,7 +1048,7 @@ async def cmd_maj_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     reste = " ".join(context.args[2:])
     if "|" not in reste:
-        await update.message.reply_text("❌ Séparez TITRE et CONTENU avec `|`.", parse_mode="Markdown")
+        await safe_reply(update, "❌ Séparez TITRE et CONTENU avec `|`.")
         return
     titre, contenu = reste.split("|", 1)
     titre, contenu = titre.strip(), contenu.strip()
@@ -1059,30 +1061,30 @@ async def cmd_maj_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     })
     sauvegarder_cgi_updates(updates)
     await update.message.reply_text(
-        f"✅ *Mise à jour CGI {annee} enregistrée !*\n📌 {titre}\n🔄 Sync GitHub...",
-        parse_mode="Markdown"
+        f"✅ Mise à jour CGI {annee} enregistrée !\n📌 {titre}\n🔄 Sync GitHub..."
     )
     resultat = await push_fichier_github(CGI_UPDATES_FILE, "telegram-bot/cgi_updates.json",
                                          f"CGI {annee}: {titre}")
     if resultat["ok"]:
-        await update.message.reply_text(f"🐙 GitHub synchronisé !", parse_mode="Markdown")
+        await update.message.reply_text("🐙 GitHub synchronisé !")
     else:
-        await update.message.reply_text(f"⚠️ Local OK, GitHub : `{resultat['erreur']}`", parse_mode="Markdown")
+        await update.message.reply_text(f"⚠️ Local OK, GitHub : {resultat['erreur']}")
 
 async def cmd_historique_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     updates = charger_cgi_updates()
     if not updates:
-        await update.message.reply_text("📋 Aucune mise à jour. Utilisez `/maj_cgi`.", parse_mode="Markdown")
+        await safe_reply(update, "📋 Aucune mise à jour. Utilisez `/maj_cgi`.")
         return
     tri = sorted(updates, key=lambda x: (x["annee"], x.get("date_ajout", "")), reverse=True)
-    texte = f"📜 *Journal CGI — {len(updates)} disposition(s)*\n\n"
+    texte = f"📜 Journal CGI — {len(updates)} disposition(s)\n\n"
     for u in tri:
-        texte += f"▸ *#{u['id']}* {u['titre']} ({u['annee']})\n_{u['contenu'][:100]}…_\n\n"
-    await update.message.reply_text(texte[:4096], parse_mode="Markdown")
+        extrait = u['contenu'][:100]
+        texte += f"▸ #{u['id']} {u['titre']} ({u['annee']})\n{extrait}…\n\n"
+    await update.message.reply_text(texte[:4096])
 
 async def cmd_supprimer_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args or len(context.args) < 2:
-        await update.message.reply_text("Usage : `/supprimer_cgi CODE ID`", parse_mode="Markdown")
+        await safe_reply(update, "Usage : `/supprimer_cgi CODE ID`")
         return
     if context.args[0] != ADMIN_CODE:
         await update.message.reply_text("🔒 Code invalide.")
@@ -1116,7 +1118,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Reçoit un PDF, extrait le texte, et demande à l'IA de l'analyser."""
     doc = update.message.document
     if not doc.mime_type or doc.mime_type != "application/pdf":
-        await update.message.reply_text("📎 Je peux analyser les fichiers *PDF* uniquement.\nEnvoyez un PDF (bilan, relevé, contrat, déclaration...).", parse_mode="Markdown")
+        await safe_reply(update, "📎 Je peux analyser les fichiers *PDF* uniquement.\nEnvoyez un PDF (bilan, relevé, contrat, déclaration...).")
         return
     await update.message.reply_chat_action("typing")
     await update.message.reply_text("📥 PDF reçu, extraction en cours...")
@@ -1169,11 +1171,11 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         caption = update.message.caption or "Analyse cette image. S'il s'agit d'une facture, d'un reçu ou d'un document comptable, identifie tous les éléments importants."
         user_id = str(update.effective_user.id)
         langue = lang_prefs.get(user_id, "fr")
+        # Modèle vision Groq stable
         client = Groq(api_key=CLE_GROQ)
         reponse = client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            model="llama-3.2-11b-vision-preview",
             messages=[
-                {"role": "system", "content": get_system_prompt_dynamique(langue)},
                 {"role": "user", "content": [
                     {"type": "text", "text": caption},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
@@ -1195,49 +1197,65 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 # ─────────────────────────────────────────────
-# HANDLER VOICE  ✅ CORRIGÉ
+# HANDLER VOICE ✅ AJOUTÉ + CORRIGÉ
 # ─────────────────────────────────────────────
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Transcrit le message vocal via Whisper puis génère une réponse IA."""
     await update.message.reply_chat_action("typing")
+    chemin_ogg = f"/tmp/voice_{update.message.voice.file_id}.ogg"
+    chemin_mp3 = f"/tmp/voice_{update.message.voice.file_id}.mp3"
     try:
         # 1. Téléchargement du fichier audio
         fichier = await context.bot.get_file(update.message.voice.file_id)
-        chemin = f"/tmp/voice_{update.message.voice.file_id}.ogg"
-        await fichier.download_to_drive(chemin)
+        await fichier.download_to_drive(chemin_ogg)
 
-        # 2. Transcription via Whisper (Groq)
+        # 2. Conversion ogg → mp3 pour compatibilité Whisper
+        try:
+            from pydub import AudioSegment
+            audio = AudioSegment.from_ogg(chemin_ogg)
+            audio.export(chemin_mp3, format="mp3")
+            chemin_final = chemin_mp3
+        except Exception as conv_err:
+            print(f"⚠️ Conversion audio échouée, tentative directe .ogg : {conv_err}")
+            chemin_final = chemin_ogg  # fallback : envoyer l'ogg directement
+
+        # 3. Transcription via Whisper (Groq)
         client_groq = Groq(api_key=CLE_GROQ)
-        with open(chemin, "rb") as f:
+        with open(chemin_final, "rb") as f:
             transcription = client_groq.audio.transcriptions.create(
                 model="whisper-large-v3",
                 file=f,
                 language="fr"
             )
-        os.remove(chemin)
+
+        # 4. Nettoyage fichiers temporaires
+        for p in [chemin_ogg, chemin_mp3]:
+            if os.path.exists(p):
+                os.remove(p)
 
         texte_transcrit = transcription.text.strip()
         if not texte_transcrit:
-            await update.message.reply_text("❌ Audio non reconnu. Parlez plus clairement et réessayez.")
+            await update.message.reply_text(
+                "❌ Audio non reconnu. Parlez plus clairement et réessayez.\n"
+                "💡 Vous pouvez aussi taper votre question directement."
+            )
             return
 
-        # 3. Confirmer la transcription à l'utilisateur
+        # 5. Confirmer la transcription à l'utilisateur
         await update.message.reply_text(
-            f"🎙️ _J'ai entendu :_ {texte_transcrit}",
-            parse_mode="Markdown"
+            f"🎙️ J'ai entendu : {texte_transcrit}"
         )
 
-        # 4. Vérifier si c'est une commande de calcul rapide
+        # 6. Vérifier si c'est un calcul rapide
         resultat_calcul = traiter_calcul(texte_transcrit)
         if resultat_calcul:
-            await update.message.reply_text(resultat_calcul, parse_mode="Markdown")
+            await safe_reply(update, resultat_calcul)
             return
 
-        # 5. Générer la réponse IA (même logique que repondre())
+        # 7. Réponse IA (même logique que repondre())
         user_id = str(update.effective_user.id)
         if user_id not in historiques:
             historiques[user_id] = []
-
         historiques[user_id].append({"role": "user", "content": texte_transcrit})
         langue = lang_prefs.get(user_id, "fr")
         contexte_enrichi = enrichir_contexte(texte_transcrit)
@@ -1251,14 +1269,11 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             temperature=0.5
         )
         texte_reponse = reponse.choices[0].message.content
-
-        # 6. Sauvegarder dans l'historique
         historiques[user_id].append({"role": "assistant", "content": texte_reponse})
         if len(historiques[user_id]) > 20:
             historiques[user_id] = historiques[user_id][-20:]
         sauvegarder_historiques(historiques)
 
-        # 7. Envoyer la réponse (avec pagination si nécessaire)
         if len(texte_reponse) > 4096:
             for i in range(0, len(texte_reponse), 4096):
                 await update.message.reply_text(texte_reponse[i:i+4096])
@@ -1267,7 +1282,13 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         print(f"❌ Erreur voix: {e}")
-        await update.message.reply_text("❌ Erreur lors du traitement du message vocal. Réessayez.")
+        for p in [chemin_ogg, chemin_mp3]:
+            if os.path.exists(p):
+                os.remove(p)
+        await update.message.reply_text(
+            "❌ Impossible de traiter ce message vocal.\n"
+            "💡 Tapez votre question directement en texte."
+        )
 
 # ─────────────────────────────────────────────
 # HANDLER MESSAGES TEXTE
@@ -1292,18 +1313,17 @@ async def repondre(update: Update, context: ContextTypes.DEFAULT_TYPE):
             feedback = f"❌ *Mauvaise.* Vous : *{reponse_user}* | Bonne : *{bonne_reponse}*\n\n"
         del quiz_sessions[user_id]
         pct = round(score["correct"] / score["total"] * 100)
-        await update.message.reply_text(
+        await safe_reply(update,
             f"{feedback}💡 {q['explication']}\n\n"
             f"📊 Score : {score['correct']}/{score['total']} ({pct}%)\n"
-            f"➡️ /quiz pour continuer",
-            parse_mode="Markdown"
+            f"➡️ /quiz pour continuer"
         )
         return
 
     # ── Calculs automatiques ──
     resultat_calcul = traiter_calcul(texte_recu)
     if resultat_calcul:
-        await update.message.reply_text(resultat_calcul, parse_mode="Markdown")
+        await safe_reply(update, resultat_calcul)
         return
 
     # ── Mode DSF ──
@@ -1334,8 +1354,11 @@ async def repondre(update: Update, context: ContextTypes.DEFAULT_TYPE):
         client = Groq(api_key=CLE_GROQ)
         historiques[user_id].append({"role": "user", "content": texte_recu})
         langue = lang_prefs.get(user_id, "fr")
+
+        # Enrichissement du contexte (CGI local + web si pertinent)
         contexte_enrichi = enrichir_contexte(texte_recu)
         system = get_system_prompt_dynamique(langue, contexte_enrichi)
+
         reponse = client.chat.completions.create(
             model=MODELE_GROQ,
             messages=[{"role": "system", "content": system}] + historiques[user_id],
@@ -1366,10 +1389,10 @@ def main():
         print("❌ CLE_GRO manquante")
         sys.exit(1)
 
-    print("🤖 Initialisation JKBOT v2.1 (CGI 2026 + SYSCOHADA + PDF + Images + Voix)...")
+    print("🤖 Initialisation JKBOT v3.0 (CGI 2026 + SYSCOHADA + PDF + Images + Voix)...")
     app = Application.builder().token(TOKEN_TELEGRAM).build()
 
-    # ── Commandes ──
+    # Commandes
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("reset", cmd_reset))
     app.add_handler(CommandHandler("aide", cmd_aide))
@@ -1400,15 +1423,15 @@ def main():
     app.add_handler(CommandHandler("historique_cgi", cmd_historique_cgi))
     app.add_handler(CommandHandler("supprimer_cgi", cmd_supprimer_cgi))
 
-    # ── Fichiers & médias (TOUS avant run_polling) ──
+    # Fichiers & médias — TOUS avant run_polling()
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-    app.add_handler(MessageHandler(filters.VOICE, handle_voice))   # ✅ ICI, avant run_polling
+    app.add_handler(MessageHandler(filters.VOICE, handle_voice))  # ✅ VOICE ajouté ici
 
-    # ── Messages texte ──
+    # Messages texte
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, repondre))
 
-    # ── Job rappels mensuels ──
+    # Job rappels mensuels
     job_queue = app.job_queue
     if job_queue:
         import pytz
@@ -1423,9 +1446,8 @@ def main():
     else:
         print("⚠️ JobQueue non disponible")
 
-    print("✅ JKBOT v2.1 prêt. Connexion Telegram...")
-    app.run_polling()   # ✅ Toujours en dernier
-
+    print("✅ JKBOT v3.0 prêt. Connexion Telegram...")
+    app.run_polling()  # ✅ Toujours en dernier
 
 if __name__ == "__main__":
     main()
