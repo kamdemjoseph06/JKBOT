@@ -98,7 +98,7 @@ def extraire_texte_pdf(chemin: str) -> str:
         for page in doc:
             texte += page.get_text()
         doc.close()
-        return texte[:6000]
+        return texte[:15000]
     except Exception as e:
         return f"Impossible de lire le PDF : {e}"
 
