@@ -1359,6 +1359,8 @@ def main():
     # Messages texte
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, repondre))
 
+
+
     # Job rappels mensuels
     job_queue = app.job_queue
     if job_queue:
@@ -1375,6 +1377,8 @@ def main():
         print("⚠️ JobQueue non disponible")
 
     print("✅ JKBOT v2.0 prêt. Connexion Telegram...")
+    app.add_handler(MessageHandler(
+    filters.VOICE, handle_voice))
     app.run_polling()
 
 if __name__ == "__main__":
