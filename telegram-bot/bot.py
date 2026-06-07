@@ -237,7 +237,7 @@ Images (facture, reçu...) → lecture et commentaire
 
 *📑 NAVIGATION*
 /etats /cours /calculer /dsf /quiz /calendrier /rappel
-/nouveautes /lf /creation /facture /fiche_paie
+/nouveautes /lf /creation /facture /fiche\_paie
 """
 
 COURS_TEXT = """📘 *COURS DE COMPTABILITÉ DISPONIBLES*
