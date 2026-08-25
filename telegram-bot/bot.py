@@ -1,11 +1,15 @@
-import logging
-import json
-import os
-import sys
-import random
+import asyncio
 import base64
-import httpx
+import json
+import logging
+import os
+import random
+import re
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
+
+import httpx
 from telegram import Update
 from telegram.ext import (
     Application, CommandHandler,
@@ -50,6 +54,37 @@ def recherche_dgi(question: str) -> str:
     except Exception as e:
         return ""
 
+def recherche_wada(question: str) -> str:
+    """Récupère des extraits WADA officiels pour les questions antidopage."""
+    motifs_wada = (
+        r"\bwada\b", r"anti[- ]?dopage", r"\bdopage\b", r"substance[s]? interdite[s]?",
+        r"liste des? interdictions?", r"\baut\b", r"\btue\b", r"contrôle antidopage",
+        r"sport propre",
+    )
+    if not any(re.search(motif, question.lower()) for motif in motifs_wada):
+        return ""
+    urls = [
+        "https://www.wada-ama.org/en/what-we-do/world-anti-doping-code",
+        "https://www.wada-ama.org/en/resources/world-anti-doping-code-and-international-standards/prohibited-list",
+        "https://www.wada-ama.org/en/athletes-support-personnel/anti-doping-education",
+        "https://www.wada-ama.org/en/what-we-do/compliance-monitoring/code-compliance-implementation-and-maintenance",
+    ]
+    extraits = []
+    for url in urls:
+        try:
+            response = requests.get(url, headers={"User-Agent": "JKBOT/4.0"}, timeout=8)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+            texte = " ".join(
+                element.get_text(" ", strip=True)
+                for element in soup.find_all(["p", "h1", "h2", "li"])[:30]
+            )
+            if texte:
+                extraits.append(f"Source officielle WADA ({url}) : {texte[:1200]}")
+        except requests.RequestException:
+            continue
+    return "\n\n".join(extraits)[:4500]
+
 def rechercher_dans_cgi_local(question: str) -> str:
     """Recherche dans la base CGI locale (cgi_updates.json)."""
     updates = charger_cgi_updates()
@@ -88,6 +123,10 @@ def enrichir_contexte(question: str) -> str:
         if dgi:
             contexte += f"\n\n🏛️ SOURCE DGI :\n{dgi}"
 
+    wada = recherche_wada(question)
+    if wada:
+        contexte += f"\n\n🧪 SOURCES OFFICIELLES WADA :\n{wada}"
+
     return contexte
 
 def extraire_texte_pdf(chemin: str) -> str:
@@ -102,16 +141,30 @@ def extraire_texte_pdf(chemin: str) -> str:
     except Exception as e:
         return f"Impossible de lire le PDF : {e}"
 
-TOKEN_TELEGRAM = os.environ.get("TOKEN_TELEGRA")
-CLE_GROQ = os.environ.get("CLE_GRO")
-ADMIN_CODE = os.environ.get("JKBOT_ADMIN_CODE", "JK2027ADMIN")
+BASE_DIR = Path(__file__).resolve().parent
+
+# Les anciens noms sont conservés pour ne pas casser les déploiements existants.
+TOKEN_TELEGRAM = (
+    os.environ.get("TELEGRAM_BOT_TOKEN")
+    or os.environ.get("TOKEN_TELEGRAM")
+    or os.environ.get("TOKEN_TELEGRA")
+)
+CLE_GROQ = (
+    os.environ.get("GROQ_API_KEY")
+    or os.environ.get("CLE_GROQ")
+    or os.environ.get("CLE_GRO")
+)
+ADMIN_CODE = os.environ.get("JKBOT_ADMIN_CODE", "").strip()
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "kamdemjoseph06/JKBOT")
-DB_FILE = "historiques.json"
-CGI_UPDATES_FILE = "cgi_updates.json"
-RAPPEL_FILE = "rappel_subscribers.json"
+DB_FILE = str(BASE_DIR / "historiques.json")
+CGI_UPDATES_FILE = str(BASE_DIR / "cgi_updates.json")
+RAPPEL_FILE = str(BASE_DIR / "rappel_subscribers.json")
 
-MODELE_GROQ = "llama-3.3-70b-versatile"
+# Modèle de production actif ; surcharge possible avec JKBOT_MODEL.
+MODELE_GROQ = os.environ.get("JKBOT_MODEL", "openai/gpt-oss-120b")
+MODELE_VISION_GROQ = os.environ.get("JKBOT_VISION_MODEL", "qwen/qwen3.6-27b")
+MODELE_TRANSCRIPTION_GROQ = os.environ.get("JKBOT_TRANSCRIPTION_MODEL", "whisper-large-v3-turbo")
 
 # ─────────────────────────────────────────────
 # SYSTEM PROMPT COMPLET
@@ -228,6 +281,9 @@ AIDE_TEXT = """📚 *JKBOT — Domaines couverts*
 🔟 Amortissements — 1️⃣1️⃣ Régularisations
 1️⃣2️⃣ SIG (EBE, VA...) — 1️⃣3️⃣ Ratios financiers
 
+*🧪 WADA / SPORT PROPRE*
+Code, Liste des interdictions, AUT/TUE, contrôles, éducation et conformité
+
 *🧮 CALCULS RAPIDES*
 /tva /is /irpp /cnps /patente
 
@@ -237,7 +293,26 @@ Images (facture, reçu...) → lecture et commentaire
 
 *📑 NAVIGATION*
 /etats /cours /calculer /dsf /quiz /calendrier /rappel
-/nouveautes /lf /creation /facture /fiche\_paie
+/nouveautes /lf /creation /facture /fiche_paie /wada
+"""
+
+WADA_TEXT = """🧪 *WADA — SPORT PROPRE ET CONFORMITÉ*
+
+JKBOT peut expliquer, à titre informatif :
+• le Code mondial antidopage et ses standards internationaux ;
+• la Liste des substances et méthodes interdites ;
+• les droits et responsabilités pendant un contrôle ;
+• les autorisations d'usage à des fins thérapeutiques (AUT/TUE) ;
+• l'éducation antidopage, la protection des données et la gestion des résultats ;
+• la préparation d'une liste de vérification pour une organisation sportive.
+
+⚠️ Pour une décision médicale, disciplinaire ou juridique, vérifiez toujours la version officielle et consultez l'organisation antidopage compétente.
+
+Sources officielles :
+• Code : https://www.wada-ama.org/en/what-we-do/world-anti-doping-code
+• Liste 2026 : https://www.wada-ama.org/en/resources/world-anti-doping-code-and-international-standards/prohibited-list
+• Éducation ADEL : https://adel.wada-ama.org/learn
+• Conformité : https://www.wada-ama.org/en/what-we-do/compliance-monitoring/code-compliance-implementation-and-maintenance
 """
 
 COURS_TEXT = """📘 *COURS DE COMPTABILITÉ DISPONIBLES*
@@ -405,6 +480,8 @@ Si info manquante, pose une question précise.
 # CALCULS FISCAUX AUTOMATIQUES
 # ─────────────────────────────────────────────
 def calculer_is(benefice: float) -> str:
+    if benefice < 0:
+        raise ValueError("Le bénéfice ne peut pas être négatif")
     is_brut = benefice * 0.30
     cac = is_brut * 0.10
     is_total = is_brut + cac
@@ -419,6 +496,8 @@ def calculer_is(benefice: float) -> str:
     )
 
 def calculer_imf(ca_ht: float) -> str:
+    if ca_ht < 0:
+        raise ValueError("Le chiffre d'affaires ne peut pas être négatif")
     imf = max(500_000, min(ca_ht * 0.01, 2_500_000))
     return (
         f"📊 *Calcul IMF sur CA HT {ca_ht:,.0f} FCFA*\n\n"
@@ -431,6 +510,8 @@ def calculer_imf(ca_ht: float) -> str:
     )
 
 def calculer_tva(ca_ht: float, tva_deductible: float) -> str:
+    if ca_ht < 0 or tva_deductible < 0:
+        raise ValueError("Les montants TVA doivent être positifs")
     tva_collectee = ca_ht * 0.1925
     tva_nette = tva_collectee - tva_deductible
     statut = "à payer à la DGI" if tva_nette >= 0 else "crédit de TVA (report ou remboursement)"
@@ -444,6 +525,8 @@ def calculer_tva(ca_ht: float, tva_deductible: float) -> str:
     )
 
 def calculer_irpp(salaire_brut: float) -> str:
+    if salaire_brut < 0:
+        raise ValueError("Le salaire ne peut pas être négatif")
     abattement = min(max(salaire_brut * 0.30, 500_000 / 12), 3_000_000 / 12)
     revenu_net_mensuel = salaire_brut - abattement
     revenu_annuel = revenu_net_mensuel * 12
@@ -475,6 +558,8 @@ def calculer_irpp(salaire_brut: float) -> str:
     )
 
 def calculer_rs(honoraires: float) -> str:
+    if honoraires < 0:
+        raise ValueError("Les honoraires ne peuvent pas être négatifs")
     rs = honoraires * 0.11
     net_percu = honoraires - rs
     return (
@@ -488,6 +573,8 @@ def calculer_rs(honoraires: float) -> str:
     )
 
 def calculer_amort(valeur: float, duree: int) -> str:
+    if valeur < 0 or duree <= 0:
+        raise ValueError("La valeur doit être positive et la durée supérieure à zéro")
     taux = 1 / duree
     annuite = valeur * taux
     lignes = [
@@ -517,6 +604,8 @@ def calculer_bfr(stocks: float, creances: float, fournisseurs: float, fiscal_soc
     )
 
 def calculer_cnps(salaire_brut: float) -> str:
+    if salaire_brut < 0:
+        raise ValueError("Le salaire ne peut pas être négatif")
     plafond_avid = 750_000
     assiette_avid = min(salaire_brut, plafond_avid)
     sal_avid = assiette_avid * 0.028
@@ -543,6 +632,8 @@ def calculer_cnps(salaire_brut: float) -> str:
     )
 
 def calculer_tva_simple(montant_ht: float) -> str:
+    if montant_ht < 0:
+        raise ValueError("Le montant HT ne peut pas être négatif")
     tva = montant_ht * 0.1925
     ttc = montant_ht + tva
     return (
@@ -553,32 +644,61 @@ def calculer_tva_simple(montant_ht: float) -> str:
         f"*Montant TTC : {ttc:,.0f} FCFA*"
     )
 
+def convertir_montant(valeur: str) -> float:
+    """Convertit un montant FCFA écrit avec virgules, points ou espaces."""
+    nettoye = re.sub(r"[,.\s\u00a0]", "", valeur)
+    return float(nettoye)
+
+
+def extraire_montants_groupes(texte: str, nombre: int) -> list[float] | None:
+    """Extrait des montants séparés par espaces, ex. BFR 3 000 000 2 000 000..."""
+    groupe = r"\d{1,3}(?:\s+\d{3}){0,2}"
+    correspondance = re.fullmatch(rf"\s*({groupe})" + rf"\s+({groupe})" * (nombre - 1) + r"\s*", texte)
+    if not correspondance:
+        return None
+    return [convertir_montant(valeur) for valeur in correspondance.groups()]
+
+
 def traiter_calcul(texte: str) -> str | None:
-    parts = texte.strip().split()
+    """Reconnaît les commandes de calcul tout en tolérant les formats usuels."""
+    texte = " ".join((texte or "").strip().split())
+    if not texte:
+        return None
+    parts = texte.split()
+    cmd = parts[0].upper()
     try:
-        cmd = parts[0].upper()
-        if cmd == "IS" and len(parts) == 2:
-            return calculer_is(float(parts[1].replace(",", "")))
-        if cmd == "IMF" and len(parts) == 2:
-            return calculer_imf(float(parts[1].replace(",", "")))
-        if cmd == "TVA" and len(parts) == 2:
-            return calculer_tva_simple(float(parts[1].replace(",", "")))
-        if cmd == "TVA" and len(parts) == 3:
-            return calculer_tva(float(parts[1].replace(",", "")), float(parts[2].replace(",", "")))
-        if cmd == "IRPP" and len(parts) == 2:
-            return calculer_irpp(float(parts[1].replace(",", "")))
-        if cmd == "CNPS" and len(parts) == 2:
-            return calculer_cnps(float(parts[1].replace(",", "")))
-        if cmd == "RS" and len(parts) == 2:
-            return calculer_rs(float(parts[1].replace(",", "")))
+        reste = texte[len(parts[0]):].strip()
+        if cmd in {"IS", "IMF", "IRPP", "CNPS", "RS", "TVA"}:
+            # Une seule valeur peut être groupée par espaces, virgules ou points.
+            if cmd == "IS" and len(parts) >= 2:
+                return calculer_is(convertir_montant(reste))
+            if cmd == "IMF" and len(parts) >= 2:
+                return calculer_imf(convertir_montant(reste))
+            if cmd == "IRPP" and len(parts) >= 2:
+                return calculer_irpp(convertir_montant(reste))
+            if cmd == "CNPS" and len(parts) >= 2:
+                return calculer_cnps(convertir_montant(reste))
+            if cmd == "RS" and len(parts) >= 2:
+                return calculer_rs(convertir_montant(reste))
+            if cmd == "TVA" and len(parts) == 3:
+                return calculer_tva(convertir_montant(parts[1]), convertir_montant(parts[2]))
+            if cmd == "TVA" and len(parts) >= 2:
+                montant_groupe = extraire_montants_groupes(reste, 1)
+                if montant_groupe:
+                    return calculer_tva_simple(montant_groupe[0])
+                if len(parts) == 2:
+                    return calculer_tva_simple(convertir_montant(parts[1]))
+
         if cmd == "AMORT" and len(parts) == 3:
-            return calculer_amort(float(parts[1].replace(",", "")), int(parts[2]))
-        if cmd == "BFR" and len(parts) == 5:
-            return calculer_bfr(
-                float(parts[1].replace(",", "")), float(parts[2].replace(",", "")),
-                float(parts[3].replace(",", "")), float(parts[4].replace(",", ""))
-            )
-    except (ValueError, IndexError):
+            return calculer_amort(convertir_montant(parts[1]), int(parts[2]))
+
+        if cmd == "BFR":
+            groupes = extraire_montants_groupes(reste, 4)
+            if groupes:
+                return calculer_bfr(*groupes)
+            if len(parts) == 5:
+                return calculer_bfr(*(convertir_montant(part) for part in parts[1:]))
+    except (ValueError, IndexError, TypeError, ZeroDivisionError):
         pass
     return None
 
@@ -724,6 +844,10 @@ def get_system_prompt_dynamique(langue: str = "fr", contexte_enrichi: str = "") 
                 base += f"▸ {e['titre']} : {e['contenu']}\n"
     if contexte_enrichi:
         base += f"\n\n{contexte_enrichi}"
+    base += (
+        "\n\nRÈGLE DE FIABILITÉ : distingue toujours une information générale d'un conseil personnalisé. "
+        "Pour la fiscalité et la conformité WADA, indique la date, la juridiction et la source à vérifier."
+    )
     if langue == "en":
         base += "\nPlease respond in English."
     return base
@@ -794,13 +918,72 @@ async def job_rappel_mensuel(context) -> None:
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+def decouper_message(texte: str, taille: int = 3900) -> list[str]:
+    """Découpe un texte en morceaux compatibles avec la limite Telegram."""
+    texte = (texte or "").strip()
+    if not texte:
+        return ["Aucune réponse générée."]
+    morceaux = []
+    while len(texte) > taille:
+        coupure = texte.rfind("\n", 0, taille)
+        if coupure < taille // 2:
+            coupure = texte.rfind(" ", 0, taille)
+        if coupure < taille // 2:
+            coupure = taille
+        morceaux.append(texte[:coupure].rstrip())
+        texte = texte[coupure:].lstrip()
+    morceaux.append(texte)
+    return morceaux
+
 async def safe_reply(update: Update, texte: str, parse_mode: str = "Markdown") -> None:
-    """Envoie un message avec parse_mode, retombe sur texte brut en cas d'erreur Markdown."""
-    try:
-        await update.message.reply_text(texte, parse_mode=parse_mode)
-    except Exception:
-        # Markdown invalide → envoi sans formatage
-        await update.message.reply_text(texte)
+    """Envoie un texte en plusieurs messages et retombe en texte brut si Markdown échoue."""
+    for morceau in decouper_message(texte):
+        try:
+            await update.message.reply_text(morceau, parse_mode=parse_mode)
+        except Exception:
+            await update.message.reply_text(morceau)
+
+async def groq_chat(messages: list[dict], *, max_tokens: int = 1500,
+                    temperature: float = 0.5, model: str | None = None):
+    """Exécute le SDK Groq synchrone hors de la boucle asyncio Telegram."""
+    if not CLE_GROQ:
+        raise RuntimeError("GROQ_API_KEY/CLE_GROQ non configurée")
+
+    def _appel():
+        client = Groq(api_key=CLE_GROQ)
+        return client.chat.completions.create(
+            model=model or MODELE_GROQ,
+            messages=messages,
+            max_completion_tokens=max_tokens,
+            temperature=temperature,
+        )
+
+    return await asyncio.to_thread(_appel)
+
+async def groq_text(messages: list[dict], **kwargs) -> str:
+    """Retourne le contenu texte d'une réponse Groq avec validation minimale."""
+    response = await groq_chat(messages, **kwargs)
+    contenu = response.choices[0].message.content if response.choices else ""
+    return (contenu or "").strip() or "Je n'ai pas pu générer de réponse."
+
+async def groq_transcribe(chemin_audio: str) -> str:
+    """Transcrit un fichier audio Telegram sans bloquer la boucle asyncio."""
+    if not CLE_GROQ:
+        raise RuntimeError("GROQ_API_KEY/CLE_GROQ non configurée")
+
+    def _appel():
+        client = Groq(api_key=CLE_GROQ)
+        with open(chemin_audio, "rb") as fichier:
+            transcription = client.audio.transcriptions.create(
+                model=MODELE_TRANSCRIPTION_GROQ,
+                file=fichier,
+                language="fr",
+                response_format="json",
+                temperature=0.0,
+            )
+        return (getattr(transcription, "text", "") or "").strip()
+
+    return await asyncio.to_thread(_appel)
 
 # ─────────────────────────────────────────────
 # COMMANDES
@@ -820,6 +1003,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_aide(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await safe_reply(update, AIDE_TEXT)
+
+async def cmd_wada(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await safe_reply(update, WADA_TEXT)
 
 async def cmd_cours(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await safe_reply(update, COURS_TEXT)
@@ -887,15 +1073,14 @@ async def cmd_facture(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Formate clairement avec séparateurs et mention légale."
     )
     try:
-        client = Groq(api_key=CLE_GROQ)
-        r = client.chat.completions.create(
-            model=MODELE_GROQ,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
-            max_tokens=1200, temperature=0.3
-        )
-        await update.message.reply_text(r.choices[0].message.content)
-    except Exception as e:
-        await update.message.reply_text("❌ Erreur technique. Réessayez.")
+        texte = await groq_text([
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ], max_tokens=1200, temperature=0.3)
+        await safe_reply(update, texte)
+    except Exception:
+        logger.exception("Erreur commande facture")
+        await safe_reply(update, "❌ Le service IA est momentanément indisponible. Réessayez plus tard.")
 
 async def cmd_fiche_paie(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action("typing")
@@ -905,15 +1090,14 @@ async def cmd_fiche_paie(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "charges patronales CNPS (~13%), coût total employeur. Formate en colonnes."
     )
     try:
-        client = Groq(api_key=CLE_GROQ)
-        r = client.chat.completions.create(
-            model=MODELE_GROQ,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
-            max_tokens=1200, temperature=0.3
-        )
-        await update.message.reply_text(r.choices[0].message.content)
-    except Exception as e:
-        await update.message.reply_text("❌ Erreur technique. Réessayez.")
+        texte = await groq_text([
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ], max_tokens=1200, temperature=0.3)
+        await safe_reply(update, texte)
+    except Exception:
+        logger.exception("Erreur commande fiche_paie")
+        await safe_reply(update, "❌ Le service IA est momentanément indisponible. Réessayez plus tard.")
 
 async def cmd_dsf(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
@@ -1032,10 +1216,13 @@ async def cmd_lf(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(texte[:4096])
 
 async def cmd_maj_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not ADMIN_CODE:
+        await safe_reply(update, "🔒 La mise à jour CGI est désactivée : configurez JKBOT_ADMIN_CODE côté serveur.")
+        return
     if not context.args or len(context.args) < 3:
         await safe_reply(update,
             "Usage : `/maj_cgi CODE ANNEE TITRE | CONTENU`\n"
-            "Exemple : `/maj_cgi JK2027ADMIN 2027 Nouveau taux IS | Le taux passe à 28%.`"
+            "Exemple : `/maj_cgi VOTRE_CODE 2027 Nouveau taux IS | Le taux passe à 28%.`"
         )
         return
     if context.args[0] != ADMIN_CODE:
@@ -1083,6 +1270,9 @@ async def cmd_historique_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.message.reply_text(texte[:4096])
 
 async def cmd_supprimer_cgi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not ADMIN_CODE:
+        await safe_reply(update, "🔒 La suppression CGI est désactivée : configurez JKBOT_ADMIN_CODE côté serveur.")
+        return
     if not context.args or len(context.args) < 2:
         await safe_reply(update, "Usage : `/supprimer_cgi CODE ID`")
         return
@@ -1115,180 +1305,125 @@ async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # HANDLER FICHIERS PDF
 # ─────────────────────────────────────────────
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Reçoit un PDF, extrait le texte, et demande à l'IA de l'analyser."""
+    """Reçoit un PDF, extrait son texte et demande à l'IA de l'analyser."""
     doc = update.message.document
-    if not doc.mime_type or doc.mime_type != "application/pdf":
-        await safe_reply(update, "📎 Je peux analyser les fichiers *PDF* uniquement.\nEnvoyez un PDF (bilan, relevé, contrat, déclaration...).")
+    nom = (doc.file_name or "").lower()
+    if doc.mime_type not in (None, "application/pdf", "application/octet-stream") and not nom.endswith(".pdf"):
+        await safe_reply(update, "📎 Je peux analyser les fichiers PDF. Envoyez un bilan, relevé, contrat ou déclaration au format PDF.")
         return
+
+    chemin_local = f"/tmp/jkbot_{doc.file_unique_id or doc.file_id}.pdf"
     await update.message.reply_chat_action("typing")
-    await update.message.reply_text("📥 PDF reçu, extraction en cours...")
+    await safe_reply(update, "📥 PDF reçu, extraction en cours...")
     try:
         fichier = await context.bot.get_file(doc.file_id)
-        chemin_local = f"/tmp/jkbot_{doc.file_id}.pdf"
         await fichier.download_to_drive(chemin_local)
-        texte_pdf = extraire_texte_pdf(chemin_local)
-        os.remove(chemin_local)
+        texte_pdf = await asyncio.to_thread(extraire_texte_pdf, chemin_local)
         if not texte_pdf or texte_pdf.startswith("Impossible"):
-            await update.message.reply_text("❌ Impossible d'extraire le texte de ce PDF. Vérifiez qu'il n'est pas scanné (image).")
+            await safe_reply(update, "❌ Impossible d'extraire le texte. Le PDF est peut-être scanné : envoyez une image ou un PDF avec texte sélectionnable.")
             return
+
         user_id = str(update.effective_user.id)
         langue = lang_prefs.get(user_id, "fr")
-        caption = update.message.caption or "Analyse ce document. S'il s'agit d'un document comptable ou fiscal, identifie les éléments clés, les montants, les obligations et donne des conseils."
-        prompt_analyse = f"Voici le contenu extrait d'un document PDF :\n\n{texte_pdf}\n\nInstruction : {caption}"
-        client = Groq(api_key=CLE_GROQ)
-        reponse = client.chat.completions.create(
-            model=MODELE_GROQ,
-            messages=[
-                {"role": "system", "content": get_system_prompt_dynamique(langue)},
-                {"role": "user", "content": prompt_analyse}
-            ],
-            max_tokens=2000, temperature=0.4
+        caption = update.message.caption or (
+            "Analyse ce document. Identifie les éléments clés, les montants, les obligations, "
+            "les incohérences éventuelles et les points à vérifier."
         )
-        texte = reponse.choices[0].message.content
-        if len(texte) > 4096:
-            for i in range(0, len(texte), 4096):
-                await update.message.reply_text(texte[i:i+4096])
-        else:
-            await update.message.reply_text(texte)
-    except Exception as e:
-        print(f"❌ Erreur PDF: {e}")
-        await update.message.reply_text("❌ Erreur lors de l'analyse du PDF. Réessayez.")
+        prompt_analyse = f"Voici le contenu extrait d'un document PDF :\n\n{texte_pdf}\n\nInstruction : {caption}"
+        texte = await groq_text([
+            {"role": "system", "content": get_system_prompt_dynamique(langue)},
+            {"role": "user", "content": prompt_analyse},
+        ], max_tokens=2000, temperature=0.4)
+        await safe_reply(update, texte)
+    except Exception:
+        logger.exception("Erreur analyse PDF")
+        await safe_reply(update, "❌ Erreur lors de l'analyse du PDF. Vérifiez le fichier et réessayez.")
+    finally:
+        try:
+            os.remove(chemin_local)
+        except FileNotFoundError:
+            pass
 
 # ─────────────────────────────────────────────
 # HANDLER IMAGES (factures, reçus)
 # ─────────────────────────────────────────────
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Reçoit une image et demande à l'IA de la décrire/analyser."""
+    """Reçoit une image et demande à l'IA de la décrire ou de l'analyser."""
+    chemin_local = f"/tmp/jkbot_{update.message.photo[-1].file_unique_id}.jpg"
     await update.message.reply_chat_action("typing")
     try:
-        photo = update.message.photo[-1]  # Meilleure résolution
+        photo = update.message.photo[-1]
         fichier = await context.bot.get_file(photo.file_id)
-        chemin_local = f"/tmp/jkbot_{photo.file_id}.jpg"
         await fichier.download_to_drive(chemin_local)
-        with open(chemin_local, "rb") as f:
-            image_b64 = base64.b64encode(f.read()).decode("ascii")
-        os.remove(chemin_local)
-        caption = update.message.caption or "Analyse cette image. S'il s'agit d'une facture, d'un reçu ou d'un document comptable, identifie tous les éléments importants."
+        with open(chemin_local, "rb") as source:
+            image_b64 = base64.b64encode(source.read()).decode("ascii")
+        caption = update.message.caption or (
+            "Analyse cette image. S'il s'agit d'une facture, d'un reçu ou d'un document comptable, "
+            "extrais les éléments lisibles et signale les points à vérifier."
+        )
         user_id = str(update.effective_user.id)
         langue = lang_prefs.get(user_id, "fr")
-        # Modèle vision Groq stable
-        client = Groq(api_key=CLE_GROQ)
-        reponse = client.chat.completions.create(
-            model="llama-3.2-11b-vision-preview",
-            messages=[
-                {"role": "user", "content": [
-                    {"type": "text", "text": caption},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
-                ]}
-            ],
-            max_tokens=1500, temperature=0.4
-        )
-        texte = reponse.choices[0].message.content
-        if len(texte) > 4096:
-            for i in range(0, len(texte), 4096):
-                await update.message.reply_text(texte[i:i+4096])
-        else:
-            await update.message.reply_text(texte)
-    except Exception as e:
-        print(f"❌ Erreur image: {e}")
-        await update.message.reply_text(
-            "❌ Impossible d'analyser cette image.\n"
-            "💡 Astuce : Envoyez un PDF pour une meilleure analyse."
-        )
+        texte = await groq_text([
+            {"role": "system", "content": get_system_prompt_dynamique(langue)},
+            {"role": "user", "content": [
+                {"type": "text", "text": caption},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+            ]},
+        ], model=MODELE_VISION_GROQ, max_tokens=1500, temperature=0.4)
+        await safe_reply(update, texte)
+    except Exception:
+        logger.exception("Erreur analyse image")
+        await safe_reply(update, "❌ Impossible d'analyser cette image. Envoyez une image plus nette ou un PDF avec texte sélectionnable.")
+    finally:
+        try:
+            os.remove(chemin_local)
+        except FileNotFoundError:
+            pass
 
 # ─────────────────────────────────────────────
 # HANDLER VOICE ✅ AJOUTÉ + CORRIGÉ
 # ─────────────────────────────────────────────
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Transcrit le message vocal via Whisper puis génère une réponse IA."""
+    """Transcrit un vocal Telegram puis le traite comme une question texte."""
     await update.message.reply_chat_action("typing")
-    chemin_ogg = f"/tmp/voice_{update.message.voice.file_id}.ogg"
-    chemin_mp3 = f"/tmp/voice_{update.message.voice.file_id}.mp3"
+    chemin_ogg = f"/tmp/voice_{update.message.voice.file_unique_id}.ogg"
     try:
-        # 1. Téléchargement du fichier audio
         fichier = await context.bot.get_file(update.message.voice.file_id)
         await fichier.download_to_drive(chemin_ogg)
-
-        # 2. Conversion ogg → mp3 pour compatibilité Whisper
-        try:
-            from pydub import AudioSegment
-            audio = AudioSegment.from_ogg(chemin_ogg)
-            audio.export(chemin_mp3, format="mp3")
-            chemin_final = chemin_mp3
-        except Exception as conv_err:
-            print(f"⚠️ Conversion audio échouée, tentative directe .ogg : {conv_err}")
-            chemin_final = chemin_ogg  # fallback : envoyer l'ogg directement
-
-        # 3. Transcription via Whisper (Groq)
-        client_groq = Groq(api_key=CLE_GROQ)
-        with open(chemin_final, "rb") as f:
-            transcription = client_groq.audio.transcriptions.create(
-                model="whisper-large-v3",
-                file=f,
-                language="fr"
-            )
-
-        # 4. Nettoyage fichiers temporaires
-        for p in [chemin_ogg, chemin_mp3]:
-            if os.path.exists(p):
-                os.remove(p)
-
-        texte_transcrit = transcription.text.strip()
+        # Groq accepte directement OGG ; aucune dépendance système n'est requise.
+        texte_transcrit = await groq_transcribe(chemin_ogg)
         if not texte_transcrit:
-            await update.message.reply_text(
-                "❌ Audio non reconnu. Parlez plus clairement et réessayez.\n"
-                "💡 Vous pouvez aussi taper votre question directement."
-            )
+            await safe_reply(update, "❌ Audio non reconnu. Parlez plus clairement ou écrivez votre question directement.")
             return
 
-        # 5. Confirmer la transcription à l'utilisateur
-        await update.message.reply_text(
-            f"🎙️ J'ai entendu : {texte_transcrit}"
-        )
-
-        # 6. Vérifier si c'est un calcul rapide
+        await safe_reply(update, f"🎙️ J'ai entendu : {texte_transcrit}")
         resultat_calcul = traiter_calcul(texte_transcrit)
         if resultat_calcul:
             await safe_reply(update, resultat_calcul)
             return
 
-        # 7. Réponse IA (même logique que repondre())
         user_id = str(update.effective_user.id)
-        if user_id not in historiques:
-            historiques[user_id] = []
-        historiques[user_id].append({"role": "user", "content": texte_transcrit})
+        historiques.setdefault(user_id, []).append({"role": "user", "content": texte_transcrit})
         langue = lang_prefs.get(user_id, "fr")
-        contexte_enrichi = enrichir_contexte(texte_transcrit)
+        contexte_enrichi = await asyncio.to_thread(enrichir_contexte, texte_transcrit)
         system = get_system_prompt_dynamique(langue, contexte_enrichi)
-
-        await update.message.reply_chat_action("typing")
-        reponse = client_groq.chat.completions.create(
-            model=MODELE_GROQ,
-            messages=[{"role": "system", "content": system}] + historiques[user_id],
+        texte_reponse = await groq_text(
+            [{"role": "system", "content": system}] + historiques[user_id],
             max_tokens=1500,
-            temperature=0.5
+            temperature=0.5,
         )
-        texte_reponse = reponse.choices[0].message.content
         historiques[user_id].append({"role": "assistant", "content": texte_reponse})
-        if len(historiques[user_id]) > 20:
-            historiques[user_id] = historiques[user_id][-20:]
+        historiques[user_id] = historiques[user_id][-20:]
         sauvegarder_historiques(historiques)
-
-        if len(texte_reponse) > 4096:
-            for i in range(0, len(texte_reponse), 4096):
-                await update.message.reply_text(texte_reponse[i:i+4096])
-        else:
-            await update.message.reply_text(texte_reponse)
-
-    except Exception as e:
-        print(f"❌ Erreur voix: {e}")
-        for p in [chemin_ogg, chemin_mp3]:
-            if os.path.exists(p):
-                os.remove(p)
-        await update.message.reply_text(
-            "❌ Impossible de traiter ce message vocal.\n"
-            "💡 Tapez votre question directement en texte."
-        )
+        await safe_reply(update, texte_reponse)
+    except Exception:
+        logger.exception("Erreur traitement vocal")
+        await safe_reply(update, "❌ Impossible de traiter ce message vocal. Réessayez ou tapez votre question directement.")
+    finally:
+        try:
+            os.remove(chemin_ogg)
+        except FileNotFoundError:
+            pass
 
 # ─────────────────────────────────────────────
 # HANDLER MESSAGES TEXTE
@@ -1330,53 +1465,38 @@ async def repondre(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id in dsf_sessions:
         await update.message.reply_chat_action("typing")
         try:
-            client = Groq(api_key=CLE_GROQ)
-            reponse = client.chat.completions.create(
-                model=MODELE_GROQ,
-                messages=[{"role": "system", "content": DSF_PROMPT},
-                          {"role": "user", "content": texte_recu}],
-                max_tokens=1500, temperature=0.3
-            )
-            texte = reponse.choices[0].message.content
-            if len(texte) > 4096:
-                for i in range(0, len(texte), 4096):
-                    await update.message.reply_text(texte[i:i+4096])
-            else:
-                await update.message.reply_text(texte)
-        except Exception as e:
-            print(f"❌ Erreur DSF: {e}")
-            await update.message.reply_text("❌ Erreur technique. Réessayez.")
+            texte = await groq_text([
+                {"role": "system", "content": DSF_PROMPT},
+                {"role": "user", "content": texte_recu},
+            ], max_tokens=1500, temperature=0.3)
+            await safe_reply(update, texte)
+        except Exception:
+            logger.exception("Erreur mode DSF")
+            await safe_reply(update, "❌ Le service IA est momentanément indisponible. Réessayez plus tard.")
         return
 
     # ── Réponse IA normale avec contexte enrichi ──
     await update.message.reply_chat_action("typing")
     try:
-        client = Groq(api_key=CLE_GROQ)
         historiques[user_id].append({"role": "user", "content": texte_recu})
         langue = lang_prefs.get(user_id, "fr")
 
-        # Enrichissement du contexte (CGI local + web si pertinent)
-        contexte_enrichi = enrichir_contexte(texte_recu)
+        # Le scraping et le SDK synchrones sont exécutés hors de la boucle Telegram.
+        contexte_enrichi = await asyncio.to_thread(enrichir_contexte, texte_recu)
         system = get_system_prompt_dynamique(langue, contexte_enrichi)
-
-        reponse = client.chat.completions.create(
-            model=MODELE_GROQ,
-            messages=[{"role": "system", "content": system}] + historiques[user_id],
-            max_tokens=1500, temperature=0.5
+        texte = await groq_text(
+            [{"role": "system", "content": system}] + historiques[user_id],
+            max_tokens=1500,
+            temperature=0.5,
         )
-        texte = reponse.choices[0].message.content
         historiques[user_id].append({"role": "assistant", "content": texte})
         if len(historiques[user_id]) > 20:
             historiques[user_id] = historiques[user_id][-20:]
         sauvegarder_historiques(historiques)
-        if len(texte) > 4096:
-            for i in range(0, len(texte), 4096):
-                await update.message.reply_text(texte[i:i+4096])
-        else:
-            await update.message.reply_text(texte)
-    except Exception as e:
-        print(f"❌ Erreur Groq: {e}")
-        await update.message.reply_text("❌ Erreur technique. Réessayez dans quelques instants.")
+        await safe_reply(update, texte)
+    except Exception:
+        logger.exception("Erreur réponse IA")
+        await safe_reply(update, "❌ Le service IA est momentanément indisponible. Réessayez dans quelques instants.")
 
 # ─────────────────────────────────────────────
 # LANCEMENT
@@ -1396,6 +1516,7 @@ def main():
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("reset", cmd_reset))
     app.add_handler(CommandHandler("aide", cmd_aide))
+    app.add_handler(CommandHandler("wada", cmd_wada))
     app.add_handler(CommandHandler("cours", cmd_cours))
     app.add_handler(CommandHandler("etats", cmd_etats))
     app.add_handler(CommandHandler("calculer", cmd_calculer))

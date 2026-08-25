@@ -1,231 +1,219 @@
-# 🤖 JKBOT — Assistant Fiscal & Comptable Camerounais
+# JKBOT — Assistant Telegram WADA, finance et fiscalité
 
-[![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)](https://python.org)
-[![Telegram](https://img.shields.io/badge/Telegram-Bot-2CA5E0?logo=telegram)](https://t.me/)
-[![Groq](https://img.shields.io/badge/LLM-Groq_LLaMA_3.3-orange)](https://groq.com)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+JKBOT est un assistant Telegram francophone conçu pour expliquer la **fiscalité camerounaise**, la **comptabilité OHADA/SYSCOHADA**, les calculs financiers courants et les sujets de **sport propre liés à la WADA**. Il peut répondre en langage naturel, conserver un historique court par utilisateur, analyser des documents, transcrire des messages vocaux et produire des modèles pédagogiques.
 
-**JKBOT** est un bot Telegram expert en fiscalité camerounaise (CGI 2026) et en comptabilité OHADA/SYSCOHADA, propulsé par le modèle LLaMA 3.3-70B via l'API Groq. Il couvre les calculs fiscaux automatiques, les écritures comptables SYSCOHADA, les quiz de formation, les rappels mensuels et bien plus.
+> **Important.** JKBOT fournit une information générale et des exemples. Il ne remplace ni un expert-comptable, ni un fiscaliste, ni un avocat, ni un médecin, ni une organisation antidopage. Les taux, échéances, règles fiscales et règles antidopage doivent être vérifiés dans les textes officiels applicables à la date de la décision.
 
----
+## Fonctionnalités actuellement disponibles
 
-## ✨ Fonctionnalités
+| Domaine | Fonctionnalités |
+| --- | --- |
+| **Fiscalité camerounaise** | Explications sur l’IS, l’IMF, la TVA, l’IRPP, les retenues à la source, la patente, la taxe foncière, les droits d’enregistrement, les obligations déclaratives et les pénalités. |
+| **Comptabilité OHADA/SYSCOHADA** | Partie double, plan comptable, écritures courantes, amortissements, provisions, régularisations, états financiers, SIG, BFR et ratios. |
+| **Finance d’entreprise** | Analyse de liquidité, rentabilité, endettement, trésorerie, BFR, FRN, seuil de rentabilité et lecture pédagogique d’un bilan. |
+| **WADA / sport propre** | Présentation du Code mondial antidopage, de la Liste des interdictions, des AUT/TUE, du contrôle antidopage, de l’éducation, de la protection des données et de la conformité. |
+| **Documents et médias** | Analyse de PDF avec texte sélectionnable, lecture de factures ou reçus en image et transcription de vocaux Telegram en français. |
+| **Formation** | Mode DSF, cours progressifs, quiz fiscalité/comptabilité et suivi du score. |
+| **Veille** | Enrichissement contextuel à partir de `cgi_updates.json`, recherche ciblée sur les sites fiscaux configurés et recherche WADA lorsque la question le nécessite. |
 
-### 🧮 Calculatrices fiscales instantanées
-| Commande | Description |
-|----------|-------------|
-| `/tva 500000` | Calcul TVA 19,25% (HT → TTC) |
-| `/is 5000000` | Impôt sur les Sociétés + CAC |
-| `/irpp 350000` | IRPP mensuel sur barème progressif |
-| `/cnps 400000` | Cotisations CNPS salarié + patronal |
-| `/calculer` | Guide complet calculatrice multi-impôts |
+## Commandes Telegram
 
-### 📚 Cours & Référence
-| Commande | Description |
-|----------|-------------|
-| `/cours` | Cours complet comptabilité SYSCOHADA |
-| `/etats` | Structure des états financiers (Bilan, CR, TFT) |
-| `/patente` | Guide calcul de la patente |
-| `/lf2025` | Mesures clés Loi de Finances 2025 |
-| `/lf 2027` | Dispositions LF d'une année donnée |
-| `/calendrier` | Calendrier fiscal annuel complet |
-| `/creation` | Guide création d'entreprise (SARL, SA…) |
+### Navigation et assistance
 
-### 🤖 Assistant DSF — Écritures SYSCOHADA Intelligentes
-| Commande | Description |
-|----------|-------------|
-| `/dsf` | Active le mode écritures SYSCOHADA |
-| `/stop` | Quitte le mode DSF |
+| Commande | Fonction |
+| --- | --- |
+| `/start` | Présente JKBOT et ses domaines. |
+| `/aide` | Affiche le menu complet. |
+| `/wada` | Affiche les ressources et thèmes WADA couverts. |
+| `/cours` | Liste les cours et exemples de questions. |
+| `/etats` | Rappelle la structure du bilan, du compte de résultat et du TFT. |
+| `/lang` | Bascule entre le français et l’anglais. |
+| `/reset` | Efface l’historique de l’utilisateur et désactive le mode DSF. |
 
-En mode DSF, décrivez une opération en français naturel, le bot génère les écritures comptables complètes avec numéros de comptes, débits/crédits et analyse fiscale.
+### Calculs et finance
 
-**Exemples :**
-```
-Achat de marchandises 500 000 FCFA TTC à crédit
-Vente de produits 1 200 000 FCFA TTC, payée par virement
-Dotation amortissement matériel 8 000 000 FCFA sur 4 ans, 2ème année
-Paiement salaires : brut 600 000, CNPS salarié, IRPP
-```
+| Commande | Exemple | Résultat |
+| --- | --- | --- |
+| `/tva` | `/tva 500000` | TVA et montant TTC à partir d’un montant HT. |
+| `/is` | `/is 5000000` | IS, CAC et total indicatif. |
+| `/irpp` | `/irpp 350000` | Estimation pédagogique de l’IRPP mensuel. |
+| `/cnps` | `/cnps 400000` | Parts salariale et patronale CNPS selon les paramètres du bot. |
+| `/calculer` | — | Guide des formats de calcul acceptés. |
+| Message texte | `BFR 3000000 2000000 1500000 500000` | Calcul du besoin en fonds de roulement. |
 
-### 📄 Générateur de Documents
-| Commande | Description |
-|----------|-------------|
-| `/facture` | Modèle de facture camerounaise conforme (NIU, TVA) |
-| `/fiche_paie` | Fiche de paie OHADA avec exemple chiffré |
+Les formats directs supplémentaires sont `IS montant`, `IMF chiffre_affaires`, `TVA montant_ht`, `TVA montant_ht tva_deductible`, `IRPP salaire_brut`, `CNPS salaire_brut`, `RS honoraires`, `AMORT valeur durée` et `BFR stocks créances fournisseurs dettes_fiscales_sociales`.
 
-### 🎯 Quiz de Formation
-| Commande | Description |
-|----------|-------------|
-| `/quiz` | Question aléatoire (fiscalité ou comptabilité) |
-| `/quiz_fiscal` | Quiz fiscalité uniquement |
-| `/quiz_compta` | Quiz comptabilité uniquement |
-| `/score` | Votre bilan de performance |
+### Comptabilité, documents et formation
 
-### 📅 Rappels Mensuels Automatiques
-| Commande | Description |
-|----------|-------------|
-| `/rappel` | Activer/désactiver les rappels du 1er du mois |
+| Commande ou action | Fonction |
+| --- | --- |
+| `/dsf` puis une opération | Génère une écriture SYSCOHADA avec journal, comptes débités/crédités, explication et impact fiscal. |
+| `/stop` | Quitte le mode DSF. |
+| `/facture` | Génère un modèle pédagogique de facture camerounaise. |
+| `/fiche_paie` | Génère un modèle pédagogique de fiche de paie. |
+| `/quiz`, `/quiz_fiscal`, `/quiz_compta` | Lance un quiz. |
+| `/score` | Affiche le score de formation. |
+| PDF envoyé au bot | Extrait le texte puis propose une analyse. |
+| Image envoyée au bot | Analyse une facture, un reçu ou un document lisible. |
+| Vocal envoyé au bot | Transcrit le vocal puis répond à la question. |
 
-Chaque 1er du mois à 7h00 (heure Douala), les abonnés reçoivent automatiquement les échéances fiscales du mois (TVA, IS, CNPS, patente…).
+### Calendrier et mises à jour
 
-### 🔄 Base CGI Auto-Évolutive
-| Commande | Description |
-|----------|-------------|
-| `/nouveautes` | Voir toutes les mises à jour CGI enregistrées |
-| `/lf 2027` | Dispositions d'une année spécifique |
-| `/maj_cgi CODE ANNEE TITRE \| CONTENU` | *(Admin)* Ajouter une nouvelle disposition |
+| Commande | Fonction |
+| --- | --- |
+| `/calendrier` | Affiche le calendrier fiscal configuré. |
+| `/rappel` | Active ou désactive le rappel mensuel à 07:00, heure de Douala. |
+| `/nouveautes` | Liste les mises à jour locales enregistrées. |
+| `/lf ANNEE` | Recherche les dispositions enregistrées pour une année. |
+| `/maj_cgi CODE ANNEE TITRE \| CONTENU` | Ajoute une disposition, uniquement si `JKBOT_ADMIN_CODE` est configuré. |
+| `/historique_cgi` | Affiche le journal des mises à jour. |
+| `/supprimer_cgi CODE ID` | Supprime une disposition protégée par le code d’administration. |
 
-Le bot intègre automatiquement toutes les nouvelles dispositions dans **toutes ses réponses IA**, permettant une mise à jour du droit fiscal sans redéploiement.
-
-### 🌐 Autres
-| Commande | Description |
-|----------|-------------|
-| `/aide` | Menu complet de toutes les commandes |
-| `/lang` | Basculer entre Français 🇫🇷 et Anglais 🇬🇧 |
-| `/reset` | Effacer l'historique de conversation |
-| `/start` | Message de bienvenue |
-
----
-
-## 🚀 Installation
+## Installation locale
 
 ### Prérequis
-- Python 3.11+
-- Compte Telegram + Bot Token (via [@BotFather](https://t.me/BotFather))
-- Clé API Groq (via [console.groq.com](https://console.groq.com))
 
-### 1. Cloner le dépôt
+Il faut Python **3.11 ou supérieur**, un bot Telegram créé via [BotFather](https://t.me/BotFather), ainsi qu’une clé API [Groq](https://console.groq.com/). Aucun binaire `ffmpeg` n’est nécessaire pour les vocaux : JKBOT transmet directement le format OGG accepté par l’API de transcription.
+
+### Installation
+
 ```bash
 git clone https://github.com/kamdemjoseph06/JKBOT.git
 cd JKBOT
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r telegram-bot/requirements.txt
 ```
 
-### 2. Installer les dépendances
+Le fichier `pyproject.toml` contient également les dépendances nécessaires aux environnements qui installent le projet avec `uv` ou un gestionnaire PEP 621.
+
+### Variables d’environnement
+
+Les noms recommandés sont `TELEGRAM_BOT_TOKEN` et `GROQ_API_KEY`. Les anciens noms `TOKEN_TELEGRAM`, `TOKEN_TELEGRA`, `CLE_GROQ` et `CLE_GRO` restent acceptés pour ne pas casser les déploiements existants.
+
 ```bash
-cd telegram-bot
-pip install python-telegram-bot[job-queue] groq httpx pytz apscheduler
+export TELEGRAM_BOT_TOKEN="votre_token_telegram"
+export GROQ_API_KEY="votre_cle_groq"
+
+# Recommandé en production pour activer les mises à jour CGI protégées
+export JKBOT_ADMIN_CODE="un_code_long_et_aleatoire"
+
+# Facultatif : synchronisation GitHub après /maj_cgi
+export GITHUB_TOKEN="votre_token_avec_le_droit_necessaire"
+export GITHUB_REPO="kamdemjoseph06/JKBOT"
+
+# Facultatif : remplacement des modèles sans modifier le code
+export JKBOT_MODEL="openai/gpt-oss-120b"
+export JKBOT_VISION_MODEL="qwen/qwen3.6-27b"
+export JKBOT_TRANSCRIPTION_MODEL="whisper-large-v3-turbo"
 ```
 
-### 3. Configurer les variables d'environnement
-Créez un fichier `.env` ou exportez les variables :
-```bash
-export TOKEN_TELEGRA="votre_token_telegram"
-export CLE_GRO="votre_cle_api_groq"
-export JKBOT_ADMIN_CODE="votre_code_admin"   # pour /maj_cgi
-```
+### Démarrage
 
-### 4. Lancer le bot
+Le point d’entrée de production est `telegram-bot/bot.py` :
+
 ```bash
 cd telegram-bot
 python bot.py
 ```
 
----
+`telegram-bot/chatbot.py` est conservé comme **wrapper de compatibilité** et redirige vers la même implémentation. Cela évite que deux versions concurrentes du bot utilisent des clés, des modèles ou des comportements différents.
 
-## 🗂️ Structure du projet
+Sur Replit, le workflow `JKBOT Telegram` exécute déjà `cd telegram-bot && python bot.py`. Vérifiez seulement que les secrets sont configurés dans l’environnement du projet.
 
-```
-JKBOT/
-├── telegram-bot/
-│   ├── bot.py                    # Code principal du bot (~1 900 lignes)
-│   ├── cgi_updates.json          # Base CGI auto-évolutive (mises à jour annuelles)
-│   ├── rappel_subscribers.json   # Liste des abonnés aux rappels mensuels
-│   └── historiques.json          # Historiques de conversations (auto-généré)
-├── artifacts/
-│   └── api-server/               # Serveur API Express (infrastructure Replit)
-├── README.md
-└── replit.md
-```
+## Architecture technique
 
----
+| Composant | Choix |
+| --- | --- |
+| Framework Telegram | `python-telegram-bot` 22.x, API asynchrone |
+| Modèle texte par défaut | `openai/gpt-oss-120b` via Groq |
+| Modèle vision par défaut | `qwen/qwen3.6-27b` via Groq |
+| Transcription | `whisper-large-v3-turbo` via Groq |
+| Persistance | Fichiers JSON locaux dans `telegram-bot/` |
+| Planification | JobQueue/APScheduler intégré à python-telegram-bot |
+| Documents | PyMuPDF pour l’extraction PDF |
+| Veille | `requests` et BeautifulSoup avec délais d’expiration |
 
-## ⚙️ Architecture technique
+Le flux d’un message est le suivant :
 
-| Composant | Technologie |
-|-----------|------------|
-| Bot framework | `python-telegram-bot` 22.x (async) |
-| Modèle IA | `llama-3.3-70b-versatile` via Groq API |
-| Planificateur | APScheduler (JobQueue intégré PTB) |
-| Persistance | JSON fichiers locaux |
-| Runtime | Python 3.11 |
-
-### Flux de traitement d'un message
-
-```
-Message utilisateur
-       │
-       ▼
-  Réponse quiz ? ──→ Correction + explication
-       │
-       ▼
-  Calcul automatique ? ──→ Résultat chiffré (IS/TVA/IRPP/CNPS…)
-       │
-       ▼
-  Mode DSF actif ? ──→ Écritures SYSCOHADA (prompt spécialisé)
-       │
-       ▼
-  Réponse IA normale (SYSTEM_PROMPT + mises à jour CGI + langue)
+```text
+Message Telegram
+      │
+      ├── Commande ──→ handler spécialisé
+      │
+      ├── Quiz ──────→ correction et score
+      │
+      ├── Calcul ────→ résultat déterministe
+      │
+      ├── Mode DSF ──→ écriture comptable guidée
+      │
+      ├── PDF/image/vocal ──→ extraction ou transcription puis IA
+      │
+      └── Question libre ──→ contexte CGI/WADA + historique + réponse IA
 ```
 
-### Système de prompt dynamique
-Le bot charge `cgi_updates.json` à chaque requête IA et injecte automatiquement les nouvelles dispositions fiscales dans le system prompt — aucun redéploiement nécessaire pour mettre à jour la base légale.
+Les appels synchrones au SDK Groq et les recherches Web sont exécutés dans des threads dédiés afin de ne pas bloquer la boucle événementielle Telegram. Les réponses sont découpées automatiquement sous la limite Telegram et retombent en texte brut lorsqu’un format Markdown est invalide.
 
----
+## Conformité WADA et extensions prévues
 
-## 🔐 Sécurité
+JKBOT peut constituer une interface pédagogique pour les athlètes, encadrants, fédérations, clubs et organisations sportives. Les extensions prévues sont les suivantes :
 
-- Les tokens et clés API sont stockés en variables d'environnement (jamais en clair dans le code)
-- La commande `/maj_cgi` est protégée par un code admin (`JKBOT_ADMIN_CODE`)
-- Le code admin par défaut doit être changé en production
+| Extension | Description |
+| --- | --- |
+| **Vérificateur de substances** | Recherche guidée dans la Liste des interdictions, avec distinction entre substances toujours interdites, interdites en compétition et interdites dans certains sports. La réponse devra toujours renvoyer vers la version officielle. |
+| **Assistant AUT/TUE** | Checklist des informations à préparer pour une autorisation d’usage à des fins thérapeutiques, sans poser de diagnostic ni décider de l’éligibilité médicale. |
+| **Calendrier de conformité sportive** | Rappels pour formations, contrôles, renouvellements documentaires, rapports et échéances internes. |
+| **Registre d’incidents** | Journal chiffré des signalements, avec contrôle d’accès, minimisation des données et politique de conservation. |
+| **Formation ADEL** | Parcours de quiz sur les droits et responsabilités, le contrôle, les conséquences du dopage et le sport propre. |
+| **Tableau de bord des signataires** | Suivi de questionnaires, demandes d’information, audits et actions correctives. |
+| **Budget et finance sportive** | Budget d’une fédération ou d’un club, suivi des subventions, coûts de contrôle, analyse des écarts et reporting financeur. |
 
----
+Le Code mondial antidopage harmonise les politiques et règles antidopage avec huit standards internationaux [1]. La Liste des interdictions 2026 est entrée en vigueur le 1er janvier 2026 [2]. WADA présente l’éducation, les droits et responsabilités, les AUT/TUE et le processus de contrôle comme des thèmes fondamentaux [3]. La conformité inclut notamment l’éducation, les tests, la gestion des résultats, la protection des données, les audits et les actions correctives [4].
 
-## 📊 Calculs fiscaux implémentés
+## Extensions finance et fiscalité proposées
 
-### Impôt sur les Sociétés (IS) — CGI 2026
-- Taux normal : **30%** (CA ≥ 3 Mds FCFA)
-- Taux réduit PME : **25%** (CA < 3 Mds FCFA)
-- Taux agricole : **20%**
-- Centimes additionnels communaux (CAC) : **10%** de l'IS
+La feuille de route peut être enrichie sans casser le fonctionnement actuel :
 
-### IRPP mensuel — Barème progressif
-| Tranche (mensuel) | Taux |
-|-------------------|------|
-| 0 – 62 000 FCFA | 0% |
-| 62 001 – 125 000 FCFA | 11% |
-| 125 001 – 250 000 FCFA | 16,5% |
-| 250 001 – 417 000 FCFA | 27,5% |
-| > 417 000 FCFA | 38,5% |
+| Fonctionnalité | Valeur pour l’utilisateur |
+| --- | --- |
+| **Analyse de ratios multi-exercices** | Compare liquidité, marge, rentabilité, endettement, autonomie financière et trésorerie sur plusieurs périodes. |
+| **Budget prévisionnel** | Produit un budget mensuel avec hypothèses, scénarios prudent/central/optimiste et analyse des écarts. |
+| **Seuil de rentabilité** | Calcule le point mort à partir des charges fixes, du prix de vente et du coût variable. |
+| **Plan de trésorerie** | Suit encaissements, décaissements, solde prévisionnel et besoins de financement. |
+| **Assistant DSF renforcé** | Contrôle l’équilibre débit/crédit, signale les informations manquantes et exporte une proposition structurée. |
+| **Contrôle de facture** | Vérifie présence du NIU, dates, totaux HT/TVA/TTC, doublons et incohérences apparentes. |
+| **Assistant clôture** | Checklist des travaux d’inventaire, amortissements, provisions, régularisations et rapprochements. |
+| **Veille fiscale versionnée** | Conserve source, date, juridiction, auteur, ancien texte et nouveau texte pour chaque mise à jour. |
+| **Multi-pays CEMAC** | Sépare les règles par pays au lieu de mélanger les règles camerounaises avec celles d’autres juridictions. |
+| **Exports professionnels** | Génère ultérieurement CSV, XLSX ou PDF à partir d’un résultat validé par l’utilisateur. |
 
-### TVA
-- Taux normal : **19,25%**
-- Exportations et opérations assimilées : **0%**
+## Sécurité et exploitation
 
-### CNPS
-| Cotisation | Taux | Plafond |
-|-----------|------|---------|
-| Salarié (AVID) | 2,8% | 750 000 FCFA |
-| Patronal AVID | 4,2% | 750 000 FCFA |
-| Allocations familiales | 7% | — |
-| AT/MP | 1,75% | — |
+Les clés ne doivent jamais être écrites dans le code, dans `README.md`, dans un commit ou dans un fichier partagé. Un ancien artefact du dépôt contenait des identifiants en clair : il a été retiré du contenu courant, mais toute clé qui aurait pu y figurer doit être révoquée et régénérée dans le fournisseur concerné. Le code d’administration est désormais désactivé par défaut tant que `JKBOT_ADMIN_CODE` n’est pas défini. Le token GitHub est facultatif et ne doit être accordé qu’avec le minimum de droits nécessaires.
 
----
+Les fichiers JSON locaux sont adaptés à un prototype ou à un déploiement unique. Pour plusieurs instances, une haute disponibilité ou des données sensibles, il faudra migrer l’historique, les abonnements et les mises à jour vers une base de données avec contrôle d’accès, sauvegardes et journalisation.
 
-## 🤝 Contribuer
+Avant toute mise en production, testez au minimum `/start`, `/aide`, `/wada`, `/tva 500000`, `/is 5000000`, `/dsf`, un PDF, une image, un vocal et une question libre. Vérifiez également que les secrets sont présents et que le modèle choisi existe encore dans le catalogue Groq.
 
-1. Forkez le dépôt
-2. Créez une branche : `git checkout -b feature/nouvelle-fonctionnalite`
-3. Committez vos changements
-4. Pushez et ouvrez une Pull Request
+## Références officielles
 
-Pour ajouter de nouvelles dispositions CGI sans modifier le code, utilisez directement la commande `/maj_cgi` dans le bot (accès admin requis).
+[1]: https://www.wada-ama.org/en/what-we-do/world-anti-doping-code "WADA — The World Anti-Doping Code"
 
----
+[2]: https://www.wada-ama.org/en/resources/world-anti-doping-code-and-international-standards/prohibited-list "WADA — Prohibited List"
 
-## 📝 Licence
+[3]: https://www.wada-ama.org/en/athletes-support-personnel/anti-doping-education "WADA — Anti-Doping Education"
 
-MIT — Voir le fichier [LICENSE](LICENSE) pour les détails.
+[4]: https://www.wada-ama.org/en/what-we-do/compliance-monitoring/code-compliance-implementation-and-maintenance "WADA — Code Compliance Implementation and Maintenance"
 
----
+[5]: https://console.groq.com/docs/models "Groq — Supported Models"
 
-*Développé pour les professionnels de la fiscalité et de la comptabilité au Cameroun 🇨🇲*
+[6]: https://console.groq.com/docs/deprecations "Groq — Model Deprecation"
+
+[7]: https://console.groq.com/docs/vision "Groq — Images and Vision"
+
+[8]: https://console.groq.com/docs/speech-to-text "Groq — Speech to Text"
+
+## Contribution
+
+Pour contribuer, créez une branche descriptive, ajoutez ou mettez à jour les tests, vérifiez `python3 -m py_compile telegram-bot/bot.py telegram-bot/chatbot.py`, puis ouvrez une Pull Request. Toute nouvelle règle fiscale ou antidopage doit être accompagnée de sa juridiction, de sa date d’effet et d’une source officielle.
